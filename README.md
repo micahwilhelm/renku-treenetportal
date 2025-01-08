@@ -2,6 +2,12 @@
 
 This is a demo project that serves a Shiny app from a Renku V2 project.
 
+To use it, you can create a Renku V2 launcher that references the image URL in the project package. You need to also set the following settings:
+
+- user id: 999 (the `shiny` user in the Rocker image)
+- port: 3838
+
+
 
 ## References
 
