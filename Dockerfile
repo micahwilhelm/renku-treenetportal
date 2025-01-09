@@ -7,6 +7,13 @@ ENV NB_GID=997
 COPY fix-permissions.sh /usr/local/bin
 RUN fix-permissions.sh /usr/local/lib/R
 
-COPY shiny-server.conf /etc/shiny-server/shiny-server.conf
+RUN apt-get update && apt-get install -y \
+    gettext-base
+
+COPY shiny-server.conf.tpl /shiny-server.conf.tpl
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chown shiny:shiny /etc/shiny-server/shiny-server.conf
 
 USER shiny
+ENTRYPOINT ["/bin/sh", "/docker-entrypoint.sh"]
+CMD ["/init"]
