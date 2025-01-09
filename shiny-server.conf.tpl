@@ -5,8 +5,8 @@ run_as shiny;
 server {
   listen 3838;
 
-  # Define a location at the base URL
-  location / {
+  # Renku will pass in the base URL path to the container
+  location $RENKU_BASE_URL_PATH/ {
 
     # Host the directory of Shiny Apps stored in this directory
     site_dir /srv/shiny-server;
