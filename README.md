@@ -10,18 +10,18 @@ This project serves a "hello-world" Shiny example app. To serve your own app, yo
 
 ### Adding your app
 
-Once you have cloned this repo, you can replace the code in the `src/r/app` folder with your app.
+Clone this repo and replace the code in the `src/r/app` folder with your app.
 
 After doing that, you should build the image and test that the app works. This requires Docker installed on your machine, but it will help you debug problems quickly.
 
-For example, you can build and run with the following commands:
+For example, you can build and run with the following commands on Macs with Apple Silicon processors (for other machines, the build command might be different):
 
 ```
 docker buildx build -t renku/shiny-session --platform linux/amd64 .
 docker run --rm -ti -e RENKU_BASE_URL_PATH="/test-app" -p 3838:3838 renku/shiny-session
 ```
 
-If everything worked correctly, you should be able to connect a web browser to
+If everything worked correctly, you will be able to connect a web browser to
 
 http://localhost:3838/test-app/
 
@@ -30,15 +30,17 @@ And you should see your app there.
 
 ### Renku session launcher
 
-Once your app runs locally, you can serve it from Renku. To do this, you will need to create a session launcher with the following pieces of information:
+Once your app runs locally, you are ready to serve it from Renku. To do this, you will need to add a session launcher to a Renku V2 project and configure it with the following pieces of information:
 
 - the container image URL
 - the port
 - UID and GID for the container
 
-This repo is configured to build a Docker image. You should see a section called **Packages** in the right-hand side of the page for this repo. Click there to get the URL for the image (you will probably want to most recent one).
+This repository is set up to build a Docker image on GitHub. Make sure all of your changes have been committed and then push to a GitHub repo.
 
-It will look something like: `ghcr.io/swissdatasciencecenter/demo-shiny-serve:sha-1478fc5`
+In the web page for your repo, you should see a section called **Packages** in the right-hand side of the page for your repo. Click there to get the URL for the image (you will probably want to most recent one).
+
+It will look something like: `ghcr.io/swissdatasciencecenter/demo-shiny-serve:sha-71a15ca`
 
 The other pieces of information are fixed:
 
