@@ -14,6 +14,8 @@ COPY shiny-server.conf.tpl /shiny-server.conf.tpl
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chown shiny:shiny /etc/shiny-server/shiny-server.conf
 
+COPY src/r/app /home/shiny/app
+
 USER shiny
 ENTRYPOINT ["/bin/sh", "/docker-entrypoint.sh"]
 CMD ["/init"]

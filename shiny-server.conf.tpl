@@ -8,8 +8,10 @@ server {
   # Renku will pass in the base URL path to the container
   location $RENKU_BASE_URL_PATH/ {
 
-    # Host the directory of Shiny Apps stored in this directory
-    site_dir /srv/shiny-server;
+    # Host the directory of example Shiny Apps
+    # site_dir /srv/shiny-server;
+    # If you have assets that also need to be served, use site_dir
+    app_dir /home/shiny/app;
 
     # Log all Shiny output to files in this directory
     log_dir /var/log/shiny-server;
