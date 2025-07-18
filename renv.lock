@@ -272,6 +272,62 @@
       "Maintainer": "Kirill Müller <kirill@cynkra.com>",
       "Repository": "CRAN"
     },
+    "RSQLite": {
+      "Package": "RSQLite",
+      "Version": "2.4.1",
+      "Source": "Repository",
+      "Title": "SQLite Interface for R",
+      "Date": "2025-06-08",
+      "Authors@R": "c( person(\"Kirill\", \"Müller\", , \"kirill@cynkra.com\", role = c(\"aut\", \"cre\"), comment = c(ORCID = \"0000-0002-1416-3412\")), person(\"Hadley\", \"Wickham\", role = \"aut\"), person(c(\"David\", \"A.\"), \"James\", role = \"aut\"), person(\"Seth\", \"Falcon\", role = \"aut\"), person(\"D. Richard\", \"Hipp\", role = \"ctb\", comment = \"for the included SQLite sources\"), person(\"Dan\", \"Kennedy\", role = \"ctb\", comment = \"for the included SQLite sources\"), person(\"Joe\", \"Mistachkin\", role = \"ctb\", comment = \"for the included SQLite sources\"), person(, \"SQLite Authors\", role = \"ctb\", comment = \"for the included SQLite sources\"), person(\"Liam\", \"Healy\", role = \"ctb\", comment = \"for the included SQLite sources\"), person(\"R Consortium\", role = \"fnd\"), person(, \"RStudio\", role = \"cph\") )",
+      "Description": "Embeds the SQLite database engine in R and provides an interface compliant with the DBI package. The source for the SQLite engine and for various extensions in a recent version is included. System libraries will never be consulted because this package relies on static linking for the plugins it includes; this also ensures a consistent experience across all installations.",
+      "License": "LGPL (>= 2.1)",
+      "URL": "https://rsqlite.r-dbi.org, https://github.com/r-dbi/RSQLite",
+      "BugReports": "https://github.com/r-dbi/RSQLite/issues",
+      "Depends": [
+        "R (>= 3.1.0)"
+      ],
+      "Imports": [
+        "bit64",
+        "blob (>= 1.2.0)",
+        "DBI (>= 1.2.0)",
+        "memoise",
+        "methods",
+        "pkgconfig",
+        "rlang"
+      ],
+      "Suggests": [
+        "callr",
+        "cli",
+        "DBItest (>= 1.8.0)",
+        "decor",
+        "gert",
+        "gh",
+        "hms",
+        "knitr",
+        "magrittr",
+        "rmarkdown",
+        "rvest",
+        "testthat (>= 3.0.0)",
+        "withr",
+        "xml2"
+      ],
+      "LinkingTo": [
+        "plogr (>= 0.2.0)",
+        "cpp11 (>= 0.4.0)"
+      ],
+      "VignetteBuilder": "knitr",
+      "Config/Needs/website": "r-dbi/dbitemplate",
+      "Config/autostyle/scope": "line_breaks",
+      "Config/autostyle/strict": "false",
+      "Config/testthat/edition": "3",
+      "Encoding": "UTF-8",
+      "RoxygenNote": "7.3.2.9000",
+      "Collate": "'SQLiteConnection.R' 'SQLKeywords_SQLiteConnection.R' 'SQLiteDriver.R' 'SQLite.R' 'SQLiteResult.R' 'coerce.R' 'compatRowNames.R' 'copy.R' 'cpp11.R' 'datasetsDb.R' 'dbAppendTable_SQLiteConnection.R' 'dbBeginTransaction.R' 'dbBegin_SQLiteConnection.R' 'dbBind_SQLiteResult.R' 'dbClearResult_SQLiteResult.R' 'dbColumnInfo_SQLiteResult.R' 'dbCommit_SQLiteConnection.R' 'dbConnect_SQLiteConnection.R' 'dbConnect_SQLiteDriver.R' 'dbDataType_SQLiteConnection.R' 'dbDataType_SQLiteDriver.R' 'dbDisconnect_SQLiteConnection.R' 'dbExistsTable_SQLiteConnection_Id.R' 'dbExistsTable_SQLiteConnection_character.R' 'dbFetch_SQLiteResult.R' 'dbGetException_SQLiteConnection.R' 'dbGetInfo_SQLiteConnection.R' 'dbGetInfo_SQLiteDriver.R' 'dbGetPreparedQuery.R' 'dbGetPreparedQuery_SQLiteConnection_character_data.frame.R' 'dbGetRowCount_SQLiteResult.R' 'dbGetRowsAffected_SQLiteResult.R' 'dbGetStatement_SQLiteResult.R' 'dbHasCompleted_SQLiteResult.R' 'dbIsValid_SQLiteConnection.R' 'dbIsValid_SQLiteDriver.R' 'dbIsValid_SQLiteResult.R' 'dbListResults_SQLiteConnection.R' 'dbListTables_SQLiteConnection.R' 'dbQuoteIdentifier_SQLiteConnection_SQL.R' 'dbQuoteIdentifier_SQLiteConnection_character.R' 'dbReadTable_SQLiteConnection_character.R' 'dbRemoveTable_SQLiteConnection_character.R' 'dbRollback_SQLiteConnection.R' 'dbSendPreparedQuery.R' 'dbSendPreparedQuery_SQLiteConnection_character_data.frame.R' 'dbSendQuery_SQLiteConnection_character.R' 'dbUnloadDriver_SQLiteDriver.R' 'dbUnquoteIdentifier_SQLiteConnection_SQL.R' 'dbWriteTable_SQLiteConnection_character_character.R' 'dbWriteTable_SQLiteConnection_character_data.frame.R' 'db_bind.R' 'deprecated.R' 'export.R' 'fetch_SQLiteResult.R' 'import-standalone-check_suggested.R' 'import-standalone-purrr.R' 'initExtension.R' 'initRegExp.R' 'isSQLKeyword_SQLiteConnection_character.R' 'make.db.names_SQLiteConnection_character.R' 'pkgconfig.R' 'show_SQLiteConnection.R' 'sqlData_SQLiteConnection.R' 'table.R' 'transactions.R' 'utils.R' 'version.R' 'zzz.R'",
+      "NeedsCompilation": "yes",
+      "Author": "Kirill Müller [aut, cre] (ORCID: <https://orcid.org/0000-0002-1416-3412>), Hadley Wickham [aut], David A. James [aut], Seth Falcon [aut], D. Richard Hipp [ctb] (for the included SQLite sources), Dan Kennedy [ctb] (for the included SQLite sources), Joe Mistachkin [ctb] (for the included SQLite sources), SQLite Authors [ctb] (for the included SQLite sources), Liam Healy [ctb] (for the included SQLite sources), R Consortium [fnd], RStudio [cph]",
+      "Maintainer": "Kirill Müller <kirill@cynkra.com>",
+      "Repository": "CRAN"
+    },
     "Rcpp": {
       "Package": "Rcpp",
       "Version": "1.0.14",
@@ -503,6 +559,34 @@
       "Author": "Winston Chang [aut, cre], Posit Software, PBC [cph, fnd]",
       "Maintainer": "Winston Chang <winston@posit.co>",
       "Repository": "CRAN"
+    },
+    "chron": {
+      "Package": "chron",
+      "Version": "2.3-62",
+      "Source": "Repository",
+      "Title": "Chronological Objects which Can Handle Dates and Times",
+      "Description": "Provides chronological objects which can handle dates and times.",
+      "Authors@R": "c(person(\"David\", \"James\", role = \"aut\", comment = \"S original\"), person(\"Kurt\", \"Hornik\", role = c(\"aut\", \"trl\", \"cre\"), email = \"Kurt.Hornik@R-project.org\", comment = c(ORCID = \"0000-0003-4198-9911\", \"R port\")), person(\"Gabor\", \"Grothendieck\", role = \"ctb\", email = \"ggrothendieck@gmail.com\"), person(\"R Core Team\", role = \"ctb\"))",
+      "Depends": [
+        "R (>= 2.12.0)"
+      ],
+      "Imports": [
+        "graphics",
+        "stats"
+      ],
+      "Suggests": [
+        "scales",
+        "ggplot2"
+      ],
+      "Enhances": [
+        "zoo"
+      ],
+      "License": "GPL-2",
+      "NeedsCompilation": "yes",
+      "Author": "David James [aut] (S original), Kurt Hornik [aut, trl, cre] (<https://orcid.org/0000-0003-4198-9911>, R port), Gabor Grothendieck [ctb], R Core Team [ctb]",
+      "Maintainer": "Kurt Hornik <Kurt.Hornik@R-project.org>",
+      "Repository": "CRAN",
+      "Encoding": "UTF-8"
     },
     "cli": {
       "Package": "cli",
@@ -1398,6 +1482,35 @@
       "NeedsCompilation": "no",
       "Author": "Paul Murrell [cre, aut], Zhijian Wen [aut]",
       "Maintainer": "Paul Murrell <paul@stat.auckland.ac.nz>",
+      "Repository": "CRAN",
+      "Encoding": "UTF-8"
+    },
+    "gsubfn": {
+      "Package": "gsubfn",
+      "Version": "0.7",
+      "Source": "Repository",
+      "Date": "2018-03-15",
+      "Title": "Utilities for Strings and Function Arguments",
+      "Author": "G. Grothendieck",
+      "Maintainer": "G. Grothendieck <ggrothendieck@gmail.com>",
+      "Description": "The gsubfn function is like gsub but can take a replacement  function or certain other objects instead of the replacement string. Matches and back references are input to the replacement function and  replaced by the function output.   gsubfn can be used to split strings  based on content rather than delimiters and for quasi-perl-style string  interpolation. The package also has facilities for translating formulas  to functions and allowing such formulas in function calls instead of  functions.  This can be used with R functions such as apply, sapply, lapply, optim, integrate, xyplot, Filter and any other function that  expects another function as an input argument or functions like cat or sql calls that may involve strings where substitution is desirable. There is also a facility for returning multiple objects from functions and a version of transform that allows the RHS to refer to LHS used in the same transform.",
+      "BugReports": "https://github.com/ggrothendieck/gsubfn/issues",
+      "Depends": [
+        "proto"
+      ],
+      "Suggests": [
+        "boot",
+        "chron",
+        "grid",
+        "lattice",
+        "quantreg",
+        "svUnit",
+        "tcltk",
+        "zoo"
+      ],
+      "License": "GPL (>= 2)",
+      "URL": "https://github.com/ggrothendieck/gsubfn",
+      "NeedsCompilation": "no",
       "Repository": "CRAN",
       "Encoding": "UTF-8"
     },
@@ -2472,6 +2585,27 @@
       "Maintainer": "Joe Cheng <joe@posit.co>",
       "Repository": "CRAN"
     },
+    "proto": {
+      "Package": "proto",
+      "Version": "1.0.0",
+      "Source": "Repository",
+      "Title": "Prototype Object-Based Programming",
+      "Description": "An object oriented system using object-based, also called prototype-based, rather than class-based object oriented ideas.",
+      "Authors@R": "c( person(\"Hadley\", \"Wickham\", , \"hadley@rstudio.com\", \"cre\"), person(\"Gabor\", \"Grothendieck\", , \"ggrothendieck@gmail.com\", \"aut\"), person(\"Louis\", \"Kates\", role = \"aut\"), person(\"Thomas\", \"Petzoldt\", role = \"aut\") )",
+      "License": "GPL-2",
+      "URL": "https://github.com/hadley/proto",
+      "BugReports": "https://github.com/hadley/proto/issues",
+      "Suggests": [
+        "testthat",
+        "covr"
+      ],
+      "RoxygenNote": "5.0.1.9000",
+      "NeedsCompilation": "no",
+      "Author": "Hadley Wickham [cre], Gabor Grothendieck [aut], Louis Kates [aut], Thomas Petzoldt [aut]",
+      "Maintainer": "Hadley Wickham <hadley@rstudio.com>",
+      "Repository": "CRAN",
+      "Encoding": "UTF-8"
+    },
     "rappdirs": {
       "Package": "rappdirs",
       "Version": "0.3.3",
@@ -3086,6 +3220,41 @@
       "NeedsCompilation": "yes",
       "Repository": "CRAN"
     },
+    "sqldf": {
+      "Package": "sqldf",
+      "Version": "0.4-11",
+      "Source": "Repository",
+      "Date": "2017-06-23",
+      "Title": "Manipulate R Data Frames Using SQL",
+      "Author": "G. Grothendieck <ggrothendieck@gmail.com>",
+      "Maintainer": "G. Grothendieck <ggrothendieck@gmail.com>",
+      "Description": "The sqldf() function is typically passed a single argument which  is an SQL select statement where the table names are ordinary R data  frame names.  sqldf() transparently sets up a database, imports the  data frames into that database, performs the SQL select or other statement and returns the result using a heuristic to determine which  class to assign to each column of the returned data frame.  The sqldf()  or read.csv.sql() functions can also be used to read filtered files  into R even if the original files are larger than R itself can handle. 'RSQLite', 'RH2', 'RMySQL' and 'RPostgreSQL' backends are supported.",
+      "ByteCompile": "true",
+      "Depends": [
+        "R (>= 3.1.0)",
+        "gsubfn (>= 0.6)",
+        "proto",
+        "RSQLite"
+      ],
+      "Suggests": [
+        "RH2",
+        "RMySQL",
+        "RPostgreSQL",
+        "svUnit",
+        "tcltk",
+        "MASS"
+      ],
+      "Imports": [
+        "DBI",
+        "chron"
+      ],
+      "License": "GPL-2",
+      "BugReports": "https://github.com/ggrothendieck/sqldf/issues",
+      "URL": "https://github.com/ggrothendieck/sqldf, https://groups.google.com/group/sqldf",
+      "NeedsCompilation": "no",
+      "Repository": "CRAN",
+      "Encoding": "UTF-8"
+    },
     "sysfonts": {
       "Package": "sysfonts",
       "Version": "0.8.9",
@@ -3274,51 +3443,6 @@
       "Author": "Yihui Xie [aut, cre, cph] (<https://orcid.org/0000-0003-0645-5666>), Posit Software, PBC [cph, fnd], Christophe Dervieux [ctb] (<https://orcid.org/0000-0003-4474-2498>), Devon Ryan [ctb] (<https://orcid.org/0000-0002-8549-0971>), Ethan Heinzen [ctb], Fernando Cagua [ctb]",
       "Maintainer": "Yihui Xie <xie@yihui.name>",
       "Repository": "CRAN"
-    },
-    "treenetproc": {
-      "Package": "treenetproc",
-      "Version": "0.1.7",
-      "Source": "GitHub",
-      "Type": "Package",
-      "Title": "Clean, Process and Visualize Dendrometer Data",
-      "Date": "2019-06-17",
-      "Authors@R": "c(person(\"Matthias\", \"Haeni\", email = \"matthias.haeni@wsl.ch\", role = c(\"aut\", \"cre\")), person(\"Simon\", \"Knüsel\", email = \"simon.knuesel@wsl.ch\", role = c(\"aut\")), person(\"Micah\", \"Wilhelm\", email = \"micah.wilhelm@wsl.ch\", role = c(\"ctb\")))",
-      "Description": "The package cleans, processes and visualises highly resolved  time series of dendrometer data. In two steps, raw dendrometer data is  aligned to regular time intervals and cleaned. Further, the package offers functions to extract the day of the year of the start and end of the  growing season as well as several characteristics of shrinkage and  expansion phases. See the vignette 'Introduction to treenetproc' for  sample code and a demonstration of an exemplary workflow.",
-      "Depends": [
-        "R (>= 3.5.0)"
-      ],
-      "License": "MIT + file LICENSE",
-      "Encoding": "UTF-8",
-      "LazyData": "true",
-      "RoxygenNote": "7.2.3",
-      "Imports": [
-        "dplyr (>= 0.7.8)",
-        "magrittr",
-        "graphics",
-        "grDevices",
-        "stats"
-      ],
-      "Suggests": [
-        "knitr",
-        "rmarkdown",
-        "devtools (>= 2.2.1)",
-        "sqldf (>= 0.4)",
-        "DBI (>= 1.0.0)",
-        "RPostgres (>= 1.1.1)",
-        "config (>= 0.3)",
-        "httr (>= 1.4.0)",
-        "testthat (>= 2.1.0)"
-      ],
-      "VignetteBuilder": "knitr",
-      "RemoteType": "github",
-      "RemoteHost": "api.github.com",
-      "RemoteRepo": "treenetproc",
-      "RemoteUsername": "treenet",
-      "RemoteRef": "dev",
-      "RemoteSha": "7114ed47aaae4f957b32481f59a62abb6f24b7c5",
-      "NeedsCompilation": "no",
-      "Author": "Matthias Haeni [aut, cre], Simon Knüsel [aut], Micah Wilhelm [ctb]",
-      "Maintainer": "Matthias Haeni <matthias.haeni@wsl.ch>"
     },
     "tzdb": {
       "Package": "tzdb",
