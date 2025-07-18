@@ -105,7 +105,7 @@ dbConnect_tn <- function(
   for (attempt in seq_len(max_retries)) {
     try({
       if (!is.null(get_tn_scope(username, password))) {
-        conn <- DBI::dbConnect(RSQLite::SQLite(), "../forestcast/treenet.sqlite")
+        conn <- DBI::dbConnect(RSQLite::SQLite(), "/home/jovyan/work/forestcast/treenet.sqlite")
 
         shiny::showNotification("Database connection established.", type = "message", duration = 3)
         return(conn)
