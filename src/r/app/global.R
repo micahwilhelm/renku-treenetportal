@@ -4,17 +4,18 @@
 # 0. Libraries ------------------------------------------------------------
 
 suppressPackageStartupMessages({
-	remotes::install_github("daattali/shinytip")
-	library(shinytip)
-	library(shinyjs)
-	library(shinyvalidate)
-	library(shinyWidgets)
-	library(dplyr)
-	library(dygraphs)
-	library(DT)
-	library(DBI)
-	library(sqldf)
-	library(RSQLite)
+  remotes::install_github("daattali/shinytip")
+  library(shinytip)
+  library(shinyjs)
+  library(shinyvalidate)
+  library(shinyWidgets)
+  library(dplyr)
+  library(dygraphs)
+  library(DT)
+  library(DBI)
+  library(sqldf)
+  library(RSQLite)
+  library(dbplyr)
 })
 
 users <- reactiveValues(count = 0)
@@ -105,7 +106,7 @@ dbConnect_tn <- function(
   for (attempt in seq_len(max_retries)) {
     try({
       if (!is.null(get_tn_scope(username, password))) {
-        conn <- DBI::dbConnect(RSQLite::SQLite(), "/home/jovyan/work/forestcast/treenet.sqlite")
+        conn <- DBI::dbConnect(RSQLite::SQLite(), "/home/shiny/work/forestcast/treenet.sqlite")
 
         shiny::showNotification("Database connection established.", type = "message", duration = 3)
         return(conn)
