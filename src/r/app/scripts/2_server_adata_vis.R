@@ -10,7 +10,7 @@ observe({
   req(user_con$scope, user_con$logged)
   
   # Connect to SQLite instead of PostgreSQL
-  db_conn <<- DBI::dbConnect(RSQLite::SQLite(), "../forestcast/treenet.sqlite")
+  db_conn <<- DBI::dbConnect(RSQLite::SQLite(), "/home/jovyan/work/forestcast/treenet.sqlite")
   scope <- user_con$scope
 
   # Replace tbl_tn with DBI::dbReadTable or dplyr::tbl for SQLite
