@@ -1,0 +1,2 @@
+usernames,										passwords,						scopes,						limits
+test,											test,				 			site_name,					!= ''
