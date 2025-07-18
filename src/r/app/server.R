@@ -1,5 +1,6 @@
 server <- function(input, output, session) {
-    
+    print(getwd())
+	
     #users <- reactiveValues(count = 0)
 
     #source('scripts/0_log_in_out.R', local = T)

@@ -2,7 +2,7 @@
 #' THe login is based on the connect function
 #' This is a minimum example and can be much extended
 # 0. Libraries ------------------------------------------------------------
-print(getwd())
+
 suppressPackageStartupMessages({
 	remotes::install_github("daattali/shinytip")
 	library(shinytip)
