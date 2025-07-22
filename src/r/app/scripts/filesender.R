@@ -29,6 +29,82 @@ metafile  <- paste0("/tmp/tn_metadata_",   dataqual, "_", daterange[1],"_", date
 logfile   <- paste0("/tmp/", jobid, ".log")
 
 # Extract the data
+extract_sqlite <- function(
+    data_format = NULL,
+    series_id   = NULL,
+    from        = NULL,
+    to          = NULL,
+    tz          = "Etc/GMT-1",
+    db_path     = NULL
+) {
+  
+  # Load functions ------------------------------------------------------------
+  Sys.setenv(TZ = tz)
+  
+  # Function to set the time zone in the database connection
+  set_db_timezone <- function(con, tz) {
+    DBI::dbExecute(con, paste0("SET TIME ZONE '", tz, "'"))
+    current_tz <- DBI::dbGetQuery(con, "SHOW timezone")
+    if (current_tz != tz) {
+      stop("Error setting the database time zone.")
+    }
+  }
+  
+  
+  # Download series -----------------------------------------------------------
+  # specify format
+  
+  if (data_format == "L0")  db_table  <- "data_all_l0" 
+  if (data_format == "L1")  db_table  <- "data_all_l1"
+  if (data_format == "L2")  db_table  <- "data_dendro_l2"
+  if (data_format == "LM")  db_table  <- "data_dendro_lm"
+  
+  # format time window
+  if (length(from) == 0) {
+    from <- "1970-01-01"
+  }
+  from <- as.POSIXct(as.character(from), format = "%Y-%m-%d", tz = "Etc/GMT-1")
+  if (length(to) == 0) {
+    to <- lubridate::today() %>% as.character()
+  }
+  to <- as.POSIXct(as.character(to), format = "%Y-%m-%d", tz = "Etc/GMT-1") +86399
+  
+  # download series
+  # options(warn = -1)
+  
+  # find unique meta_series take first start and last stop date per series_id
+  # Assume all other metadata is identical in other rows
+  
+  # specify time window
+  db_time <- paste0(db_table, ".ts BETWEEN '",
+                    format(start, "%Y-%m-%d %H:%M:%S", tz = "Etc/GMT-1"),
+                    "' AND '",
+                    format(stop, "%Y-%m-%d %H:%M:%S", tz = "Etc/GMT-1"), "'")
+  
+  
+  con  <- DBI::dbConnect(RSQLite::SQLite(), db_path)
+  
+  # Set the database time zone to UTC (server default)
+  set_db_timezone(con, "UTC")
+  
+  query <- paste0("SELECT * FROM ", db_table,
+                  " WHERE series_id in (", paste0(series_id, collapse=", "),")",
+                  paste0(c("",  db_time), collapse=" AND "), ";")
+  
+  foo <- sqldf::sqldf(query, connection=con)
+  invisible(DBI::dbDisconnect(con))
+  
+  # df <- foo %>%
+  #   dplyr::select_if(!(names(.) %in% "insert_date")) %>%
+  #   transform(ts = lubridate::force_tz(ts, tzone = "Etc/GMT-1")) %>%  # Force the timezone to Etc/GMT-1
+  #   transform(ts = lubridate::with_tz(ts, tzone = tz)) %>%  # Convert to desired timezone
+  # # dplyr::arrange(ts) %>%
+  #   # dplyr::distinct() %>%
+  #   transform(value = as.numeric(value))
+  
+  return(foo)
+}
+
 timeseries <- extract_sqlite(
     data_format = dataqual,
     series_id   = metadata$series_id,
