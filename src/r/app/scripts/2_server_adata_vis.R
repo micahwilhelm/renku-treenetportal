@@ -241,10 +241,10 @@ observeEvent(input$send, {
   
   system2(
     command = "nohup",
-    args    = c("Rscript", "scripts/filesender.R", params_file),
-    stdout  = F,
-    stderr  = F,
-    wait    = F
+    args   = c("Rscript", "scripts/filesender.R", params_file),
+    stdout = T,
+    stderr = T,
+    wait   = F
   )
 })
 
