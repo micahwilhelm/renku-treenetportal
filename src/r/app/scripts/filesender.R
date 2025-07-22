@@ -24,9 +24,9 @@ timezone  <- "Etc/GMT-1"
 
 # Define timestamped export datafile and logfile
 timestamp <- format(now(), "%Y%m%d_%H%M%S")
-datafile <- paste0("/tmp/tn_timeseries_", dataqual, "_", daterange[1],"_", daterange[2],"_",jobid,".csv")
-metafile <- paste0("/tmp/tn_metadata_",   dataqual, "_", daterange[1],"_", daterange[2],"_",jobid,".csv")
-logfile  <- paste0("exports/", jobid, ".log")
+datafile  <- paste0("/tmp/tn_timeseries_", dataqual, "_", daterange[1],"_", daterange[2],"_",jobid,".csv")
+metafile  <- paste0("/tmp/tn_metadata_",   dataqual, "_", daterange[1],"_", daterange[2],"_",jobid,".csv")
+logfile   <- paste0("/tmp/", jobid, ".log")
 
 # Extract the data
 timeseries <- extract_sqlite(
