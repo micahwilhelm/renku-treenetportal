@@ -13,9 +13,8 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     libmagick++-dev \
     python3 \
-    python3-pip \
-    nohup && \
-    pip3 install requests urllib3
+    python3-pip && \
+    pip3 install --break-system-packages requests urllib3
 
     
 # Copy the renv.lock file and renv directory
