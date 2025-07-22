@@ -85,7 +85,7 @@ extract_sqlite <- function(
   con  <- DBI::dbConnect(RSQLite::SQLite(), db_path)
   
   # Set the database time zone to UTC (server default)
-  set_db_timezone(con, "UTC")
+  # set_db_timezone(con, "UTC")
   
   query <- paste0("SELECT * FROM ", db_table,
                   " WHERE series_id in (", paste0(series_id, collapse=", "),")",
