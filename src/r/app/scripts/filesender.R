@@ -128,7 +128,7 @@ if (is.null(timeseries)) {
 		relocate(series_id, data_format, extracted_from, extracted_until, timezone)
 	
 	write.csv(
-		timeseries %>% rename(series_id = series),
+		timeseries,
 		datafile,
 		row.names = F
 	)
