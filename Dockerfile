@@ -7,11 +7,16 @@ ENV NB_GID=997
 COPY fix-permissions.sh /usr/local/bin
 RUN fix-permissions.sh /usr/local/lib/R
 
-# Install additional system dependencies (PostgreSQL client library, ImageMagick library)
+# Install additional system dependencies (PostgreSQL client library, ImageMagick library, Python3, pip, etc)
 RUN apt-get update && apt-get install -y \
     gettext-base \
     libpq-dev \
-    libmagick++-dev
+    libmagick++-dev \
+    python3 \
+    python3-pip \
+    nohup && \
+    pip3 install requests urllib3
+
     
 # Copy the renv.lock file and renv directory
 COPY renv.lock /home/shiny/app/renv.lock
