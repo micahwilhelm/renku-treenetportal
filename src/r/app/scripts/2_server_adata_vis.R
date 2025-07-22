@@ -223,7 +223,7 @@ observeEvent(input$send, {
   
 
   job.id <- uuid::UUIDgenerate()
-  params_file <- paste0("~/treenet/treenetportal/exports/params_", job.id, ".rds")
+  params_file <- paste0("/home/shiny/work/app/exports/params_", job.id, ".rds")
   # log_out     <- paste0("exports/out_", job.id, ".log")
   # log_err     <- paste0("exports/err_", job.id, ".log")
   

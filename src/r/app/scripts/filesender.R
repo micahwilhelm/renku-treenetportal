@@ -35,7 +35,7 @@ timeseries <- extract_sqlite(
     from        = daterange[1],
     to          = daterange[2],
     tz          = timezone,
-    db_path     = "../forestcast/treenet.sqlite"
+    db_path     = "/home/shiny/work/forestcast/treenet.sqlite"
 ) 
 
 if (is.null(timeseries)) {
