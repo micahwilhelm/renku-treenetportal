@@ -33,13 +33,9 @@ COPY renv /home/shiny/app/renv
 RUN R -e "install.packages('renv', repos='https://cloud.r-project.org/')"
 RUN R -e "renv::restore(lockfile = '/home/shiny/app/renv.lock')"
 
-# Copy config-setup script
-COPY copy_config.sh /usr/local/bin/copy_config.sh
-RUN chmod +x /usr/local/bin/copy_config.sh
-
 # Use shiny user
 USER shiny
 
-# Entrypoint: copy config, then start container
-ENTRYPOINT ["/usr/local/bin/copy_config.sh"]
-CMD ["/bin/sh", "/docker-entrypoint.sh"]
+# Set the entrypoint and default command
+ENTRYPOINT ["/bin/sh", "/docker-entrypoint.sh"]
+CMD ["/init"]
