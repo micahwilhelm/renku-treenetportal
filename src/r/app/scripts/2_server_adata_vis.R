@@ -239,13 +239,21 @@ observeEvent(input$send, {
   message("params_file saved")
 
   
-  system2(
-    command = "nohup",
-    args   = c("Rscript", "scripts/filesender.R", params_file),
-    stdout = T,
-    stderr = T,
-    wait   = F
-  )
+  # system2(
+  #   command = "nohup",
+  #   args   = c("Rscript", "scripts/filesender.R", params_file),
+  #   stdout = T,
+  #   stderr = T,
+  #   wait   = F
+  # )
+  # message("files saved")
+
+  # run the benchmark
+  source("scripts/benchmark_logger.R")
+  result <- benchmark_and_log({
+    system2("Rscript", c("scripts/filesender.R", params_file), wait = T)
+  })
+  
 })
 
 # 5. View the data ---------------------------------------------------
