@@ -39,8 +39,8 @@ output$ui_adata_vis <- renderUI({
     # Side panel ----
     sidebarPanel(
       width = 2,
-      textInput("command", "Enter Terminal Command:", value = "ls"), #testing
-      actionButton("run", "Run Command"), #testing
+      # textInput("command", "Enter Terminal Command:", value = "ls"), #testing
+      # actionButton("run", "Run Command"), #testing
       radioButtons("dataqual_id", choiceNames = c("L1","L2","LM"), choiceValues = c("L1","L2","LM"), selected = "LM", inline = T,
                    label = shinytip::tip(
                      strong("Data quality", icon("question-circle")),
@@ -114,7 +114,7 @@ output$ui_adata_vis <- renderUI({
     # Main panel ----
     mainPanel(
       width = 10,
-      verbatimTextOutput("output"), #testing
+      # verbatimTextOutput("output"), #testing
       shinytip::tip(
         strong("Available data", icon("question-circle")),
         "The time series available in the table below are the ones that match your selection criteria.",

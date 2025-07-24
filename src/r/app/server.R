@@ -39,9 +39,10 @@ server <- function(input, output, session) {
     })
   })
 
-  output$output <- renderText({
-    paste(result(), collapse = "\n")
-  })
+      # testing
+      # output$output <- renderText({
+      #   paste(result(), collapse = "\n")
+      # })
 
     # Session end -------------------------------------------------------------
     session$onSessionEnded(function(){
