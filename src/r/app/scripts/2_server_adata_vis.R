@@ -234,7 +234,7 @@ observeEvent(input$send, {
     metadata  = info.sel,
     jobid     = job.id
   )
-  message(params_file)
+  message(job.id)
   saveRDS(params, params_file)
   message("params_file saved")
 

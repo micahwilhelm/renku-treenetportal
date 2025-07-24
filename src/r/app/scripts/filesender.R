@@ -115,9 +115,9 @@ timeseries <- extract_sqlite(
 ) 
 
 if (is.null(timeseries)) {
-	message <- "Sorry. There are no data available from the specified series and period."
-	writeLines(message, con = logfile)
+	message("Sorry. There are no data available from the specified series and period.", con = logfile)
 } else {
+  message("data extracted")
 	# metadata <- metadata %>% 
 	# 	mutate(data_format = dataqual, extracted_from = daterange[1], extracted_until = daterange[2], timezone = timezone) %>% 
 	# 	dplyr::select(measure_point, current_sensor=sensor_name, sensor_class, series_start, series_stop, site_xcor, site_ycor, site_altitude)
@@ -144,20 +144,21 @@ if (is.null(timeseries)) {
 		"nohup python3 scripts/filesender.py %s -r %s >> %s 2>&1",
 		exportfiles, recipient, logfile
 	)
-	system(command, wait = T)
+	system(command, wait = F)
+	message("files sent")
 
-	# Remove logfile if empty (no errors/output)
-	if (file.exists(logfile) && file.info(logfile)$size == 0) {
-		file.remove(logfile)
-	}
-	
-	# Clean up after sending
-	if (file.exists(datafile)) {
-		file.remove(datafile)
-	}
-	if (file.exists(metafile)) {
-		file.remove(metafile)
-	}
+	# # Remove logfile if empty (no errors/output)
+	# if (file.exists(logfile) && file.info(logfile)$size == 0) {
+	# 	file.remove(logfile)
+	# }
+	# 
+	# # Clean up after sending
+	# if (file.exists(datafile)) {
+	# 	file.remove(datafile)
+	# }
+	# if (file.exists(metafile)) {
+	# 	file.remove(metafile)
+	# }
 	if (file.exists(paramsfile)) {
 		file.remove(paramsfile)
 	}
