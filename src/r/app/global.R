@@ -26,7 +26,7 @@ options(warn = 0)
 
 get_tn_scope <- function(username=NULL, password=NULL){
 	# validate user credentials and specify data access
-	cred <- readr::read_csv("scripts/login_creds.csv", col_types=readr::cols())
+	cred <- readr::read_csv("/secrets/login_creds.csv", col_types=readr::cols())
 	mask    <- cred$usernames %in% username & cred$passwords %in% password
 	
 	if (any(mask)) {
