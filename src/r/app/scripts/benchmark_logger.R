@@ -8,8 +8,8 @@ benchmark_and_log <- function(expr_to_benchmark) {
   elapsed_time <- timing["elapsed"]
 
   # ---- 2. Collect metadata ----
-  timestamp <- as.character(Sys.time()),
-  cpu_cores <- as.integer(system("nproc", intern = TRUE)),
+  timestamp <- as.character(Sys.time())
+  cpu_cores <- as.integer(system("nproc", intern = TRUE))
   memory_gb <- as.numeric(system("awk '/MemTotal/ {print $2}' /proc/meminfo", intern = TRUE)) / 1024 / 1024  # in GB
 
   # ---- 3. Build log entry ----
