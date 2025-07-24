@@ -21,6 +21,7 @@ RUN apt-get update && apt-get install -y \
 # Copy Shiny server config and entrypoint logic
 COPY shiny-server.conf.tpl /shiny-server.conf.tpl
 COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chown shiny:shiny /etc/shiny-server/shiny-server.conf
 
 # Copy app and R environment
 COPY src/r/app /home/shiny/app
