@@ -144,7 +144,7 @@ if (is.null(timeseries)) {
 		"nohup python3 scripts/filesender.py %s -r %s >> %s 2>&1",
 		exportfiles, recipient, logfile
 	)
-	system(command, wait = F)
+	system(command, wait = T)
 
 	# Remove logfile if empty (no errors/output)
 	if (file.exists(logfile) && file.info(logfile)$size == 0) {
