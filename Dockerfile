@@ -18,14 +18,6 @@ RUN apt-get update && apt-get install -y \
     python3-pip && \
     pip3 install --break-system-packages requests urllib3
 
-# Copy Shiny server config and entrypoint logic
-COPY shiny-server.conf.tpl /shiny-server.conf.tpl
-COPY docker-entrypoint.sh /docker-entrypoint.sh
-#RUN touch /etc/shiny-server/shiny-server.conf && \
-#    chown shiny:shiny /etc/shiny-server/shiny-server.conf
-
-# Copy app and R environment
-COPY src/r/app /home/shiny/app
 COPY renv.lock /home/shiny/app/renv.lock
 COPY renv /home/shiny/app/renv
 
@@ -33,13 +25,17 @@ COPY renv /home/shiny/app/renv
 RUN R -e "install.packages('renv', repos='https://cloud.r-project.org/')"
 RUN R -e "renv::restore(lockfile = '/home/shiny/app/renv.lock')"
 
-# Copy config-setup script
-COPY copy_config.sh /usr/local/bin/copy_config.sh
-RUN chmod +x /usr/local/bin/copy_config.sh
+# Copy Shiny server configuration and entrypoint scripts
+COPY shiny-server.conf.tpl /shiny-server.conf.tpl
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chown shiny:shiny /etc/shiny-server/shiny-server.conf
 
-# Use shiny user
+# Copy the Shiny app source code
+COPY src/r/app /home/shiny/app
+
+# Set the user to shiny
 USER shiny
 
-# Entrypoint: copy config, then start container
-ENTRYPOINT ["/usr/local/bin/copy_config.sh"]
-CMD ["/bin/sh", "/docker-entrypoint.sh"]
+# Set the entrypoint and default command
+ENTRYPOINT ["/bin/sh", "/docker-entrypoint.sh"]
+CMD ["/init"]
