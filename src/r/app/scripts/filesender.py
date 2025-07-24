@@ -63,7 +63,7 @@ apikey = None
 homepath = expanduser("~")
 
 config = configparser.ConfigParser()
-config.read(homepath + '/.filesender/filesender.py.ini')
+config.read('/secrets/filesender.py.ini')
 if 'system' in config:
   base_url = config['system'].get('base_url', 'https://filesender.switch.ch/filesender2/rest.php')
   default_transfer_days_valid = int(config['system'].get('default_transfer_days_valid', 10))
