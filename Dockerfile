@@ -24,8 +24,8 @@ COPY renv.lock /home/shiny/app/renv.lock
 COPY renv /home/shiny/app/renv
 
 # Install R dependencies via renv
-RUN R -e "install.packages('renv', version = "1.1.4", repos='https://cloud.r-project.org/')"
-RUN R -e "renv::restore(lockfile = '/home/shiny/app/renv.lock')"
+RUN R -e "install.packages('renv', repos='https://cloud.r-project.org')"
+RUN R -e "renv::restore(lockfile = '/home/shiny/app/renv.lock', clean = TRUE)"
 
 # Copy Shiny server configuration and entrypoint scripts
 COPY shiny-server.conf.tpl /shiny-server.conf.tpl
