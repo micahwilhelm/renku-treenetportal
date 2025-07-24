@@ -5,7 +5,7 @@
 # 1. UI -------------------------------------------------------------------
 m_ui_login <- function( id ) {
   
-  ns <- shiny::NS(id)
+ns <- shiny::NS(id)
 version <- "2025-07-08 11:02"
   fluidRow( id = ns("panel_login"),
             
