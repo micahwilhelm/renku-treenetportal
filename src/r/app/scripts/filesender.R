@@ -105,18 +105,14 @@ extract_sqlite <- function(
   return(foo)
 }
 
-# run the benchmark
-source("scripts/benchmark_logger.R")
-result <- benchmark_and_log({
-  timeseries <- extract_sqlite(
-    data_format = dataqual,
-    series_id   = metadata$series_id,
-    from        = daterange[1],
-    to          = daterange[2],
-    tz          = timezone,
-    db_path     = "/home/shiny/work/forestcast/treenet.sqlite"
-  ) 
-})
+timeseries <- extract_sqlite(
+  data_format = dataqual,
+  series_id   = metadata$series_id,
+  from        = daterange[1],
+  to          = daterange[2],
+  tz          = timezone,
+  db_path     = "/home/shiny/work/forestcast/treenet.sqlite"
+) 
 
 if (is.null(timeseries)) {
 	message("Sorry. There are no data available from the specified series and period.", con = logfile)
@@ -141,15 +137,19 @@ if (is.null(timeseries)) {
 		metafile,
 		row.names = F
 	)
-	
+
 	# Send file via Python script (filesender.py)
 	exportfiles <- paste0("tn_download_",jobid,".zip") #paste(shQuote(c(datafile,metafile)), collapse = " ")
 	zip::zip(zipfile = exportfiles, files = c(datafile, metafile))
+	# run the benchmark
+	source("scripts/benchmark_logger.R")
+	result <- benchmark_and_log({
 	command <- sprintf(
 		"nohup python3 scripts/filesender.py %s -r %s >> %s 2>&1",
 		exportfiles, recipient, logfile
 	)
-	system(command, wait = F)
+	system(command, wait = T)
+	})
 	message("files sent")
 
 	# # Remove logfile if empty (no errors/output)
