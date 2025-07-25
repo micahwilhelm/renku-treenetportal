@@ -143,7 +143,7 @@ if (is.null(timeseries)) {
 	)
 	
 	# Send file via Python script (filesender.py)
-	exportfiles <- paste0("/tmp/tn_download_",jobid,".zip") #paste(shQuote(c(datafile,metafile)), collapse = " ")
+	exportfiles <- paste0("tn_download_",jobid,".zip") #paste(shQuote(c(datafile,metafile)), collapse = " ")
 	zip::zip(zipfile = exportfiles, files = c(datafile, metafile))
 	command <- sprintf(
 		"nohup python3 scripts/filesender.py %s -r %s >> %s 2>&1",
