@@ -15,6 +15,13 @@ suppressPackageStartupMessages({
 	library(DBI)
 	library(sqldf)
 	library(RSQLite)
+  library(dbplyr)
+  library(purrr)
+  library(stringi)
+  library(stringr)
+  library(tidyr)
+  library(data.table)
+  library(zip)
 })
 
 users <- reactiveValues(count = 0)
