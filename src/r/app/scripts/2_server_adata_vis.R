@@ -248,11 +248,7 @@ observeEvent(input$send, {
   # )
   # message("files saved")
 
-  # run the benchmark
-  source("scripts/benchmark_logger.R")
-  result <- benchmark_and_log({
-    system2("Rscript", c("scripts/filesender.R", params_file), wait = T)
-  })
+    system2("Rscript", c("scripts/filesender.R", params_file), wait = F)
   
 })
 
