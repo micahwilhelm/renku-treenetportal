@@ -43,6 +43,31 @@ parse_validity <- function(x, formats = c("%Y-%m-%d", "%d.%m.%Y", "%Y/%m/%d")){
 	out
 }
 
+tn_creds_problem <- function(){
+	#' @description Renku: why the login file cannot be used, or NULL if it looks fine. The file is a session secret,
+	#' so a wrong mount path / filename or a value that lost its line breaks when pasted would otherwise only show
+	#' up as "invalid username or password". The text names no credentials.
+	f <- tn_creds_file
+	if (!file.exists(f)) {
+		found <- tryCatch(list.files(dirname(f)), error = function(e) character(0))
+		return(sprintf("The login file %s is missing in this session (files in %s: %s). Check the session secret's filename and mount location.",
+		               f, dirname(f), if (length(found)) paste(found, collapse = ", ") else "none"))
+	}
+	lines <- tryCatch(readLines(f, warn = FALSE), error = function(e) NULL)
+	if (is.null(lines)) return(sprintf("The login file %s cannot be read.", f))
+	lines <- lines[nzchar(trimws(lines))]
+	if (length(lines) < 2) {
+		return(sprintf("The login file %s has %d line(s); the line breaks were probably lost when the secret was entered.", f, length(lines)))
+	}
+	cred <- tryCatch(read_tn_creds(), error = function(e) NULL)
+	need <- c("usernames", "passwords", "scopes", "validities", "limits")
+	if (is.null(cred) || !all(need %in% names(cred))) {
+		return(sprintf("The login file %s must be semicolon-separated with the columns %s; found: %s.",
+		               f, paste(need, collapse = ";"), if (is.null(cred)) "unreadable" else paste(names(cred), collapse = ";")))
+	}
+	NULL
+}
+
 read_tn_creds <- function(){
 	# read the credentials and add the parsed expiry date as `valid_until`
 	# the file is semicolon-delimited so that a limit may contain commas, e.g. %in% c('a','b'); trim_ws is

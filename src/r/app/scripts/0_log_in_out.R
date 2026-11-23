@@ -133,7 +133,11 @@ shiny::observeEvent(input$b_login, {
 
     # credentials that match but have expired: quote the expiry date
     expired_on <- try(get_tn_expiry(user, pwd), silent = TRUE)
-    msg <- if (!inherits(expired_on, "try-error") && !is.na(expired_on)) {
+    creds_problem <- try(tn_creds_problem(), silent = TRUE)   # Renku: the login file is a session secret
+    if (!inherits(creds_problem, "try-error") && !is.null(creds_problem)) message(creds_problem)
+    msg <- if (!inherits(creds_problem, "try-error") && !is.null(creds_problem)) {
+      paste("Login is not possible:", creds_problem)
+    } else if (!inherits(expired_on, "try-error") && !is.na(expired_on)) {
       sprintf("Authentication failed. Your credentials expired on %s.", format(expired_on, "%Y-%m-%d"))
     } else {
       "Authentication failed. Invalid username or password."
