@@ -189,8 +189,13 @@ dbConnect_tn <- function(
     stop("User authentication failed.")
   }
   if (!file.exists(file.path(tn_parquet_dir, "view_metadata.parquet"))) {
-    shiny::showNotification("The TreeNet data export is not available in this session.", type = "error")
-    stop("No Parquet export found in ", tn_parquet_dir)
+    tn_parquet_dir <<- tn_find_parquet_dir()   # the bucket may have been mounted after the app started
+  }
+  problem <- tn_parquet_problem()
+  if (!is.null(problem)) {
+    message(problem)
+    shiny::showNotification(problem, type = "error", duration = NULL)
+    stop(problem)
   }
   new("TnParquetConnection", root = tn_parquet_dir)
 }

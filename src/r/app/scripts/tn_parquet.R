@@ -8,7 +8,43 @@
 # Shared by the app (global.R) and the export (scripts/filesender.R). Everything database-specific in the Renku
 # version lives here, so the rest of the code can follow the main treenetportal branch closely.
 
-tn_parquet_dir <- Sys.getenv("TREENET_PARQUET_DIR", "/home/shiny/work/forestcast/treenet-parquet")
+tn_mount_bases <- function(){
+	#' @description directories under which Renku may mount the forestcast-data bucket (a data connector). The mount
+	#' point depends on the launcher and the connector's slug, and Shiny Server does not pass the session's
+	#' environment to the app, so docker-entrypoint.sh saves RENKU_MOUNT_DIR / RENKU_WORKING_DIR to /tmp/renku-dirs.
+	saved <- if (file.exists("/tmp/renku-dirs")) readLines("/tmp/renku-dirs", warn = FALSE) else character(0)
+	b <- c(Sys.getenv(c("RENKU_MOUNT_DIR", "RENKU_WORKING_DIR")), saved,
+	       "/home/shiny/work", "~/work", "/home/renku/work", "/home/jovyan/work", "/work", "/data")
+	unique(path.expand(b[nzchar(b)]))
+}
+
+tn_find_parquet_dir <- function(){
+	#' @description the treenet-parquet directory of the mounted bucket: TREENET_PARQUET_DIR if set, else the first
+	#' <base>/treenet-parquet, <base>/*/treenet-parquet or <base>/*/*/treenet-parquet holding view_metadata.parquet
+	env <- Sys.getenv("TREENET_PARQUET_DIR")
+	if (nzchar(env)) return(env)
+	for (b in tn_mount_bases()) {
+		cand <- c(file.path(b, "treenet-parquet"),
+		          Sys.glob(file.path(b, "*", "treenet-parquet")),
+		          Sys.glob(file.path(b, "*", "*", "treenet-parquet")))
+		hit <- cand[file.exists(file.path(cand, "view_metadata.parquet"))]
+		if (length(hit)) return(hit[1])
+	}
+	"/home/shiny/work/forestcast/treenet-parquet"   # not found; tn_parquet_problem() explains
+}
+
+tn_parquet_problem <- function(){
+	#' @description NULL if the export is available, else a message saying where it was looked for and what is there
+	if (file.exists(file.path(tn_parquet_dir, "view_metadata.parquet"))) return(NULL)
+	seen <- vapply(Filter(dir.exists, tn_mount_bases()), function(b) {
+		sprintf("%s: %s", b, paste(head(list.files(b, all.files = FALSE), 10), collapse = ", "))
+	}, character(1))
+	sprintf("The TreeNet data export (treenet-parquet/view_metadata.parquet) was not found. Is the forestcast-data data connector attached to this session? Looked in %s%s",
+	        paste(tn_mount_bases(), collapse = ", "),
+	        if (length(seen)) paste0(". Found: ", paste(seen, collapse = "; ")) else ".")
+}
+
+tn_parquet_dir <- tn_find_parquet_dir()
 
 # data tables per data quality level: c(all, dendro), as in dataqual.tbl() of 2_server_adata_vis.R
 tn_level_tables <- list(

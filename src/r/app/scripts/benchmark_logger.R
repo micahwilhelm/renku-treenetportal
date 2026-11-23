@@ -1,7 +1,8 @@
 # benchmark_logger.R
 
 benchmark_and_log <- function(expr_to_benchmark) {
-  log_path <- "/home/shiny/work/forestcast/benchmark-log.csv"
+  # next to the treenet-parquet directory, i.e. in the root of the mounted bucket
+  log_path <- if (exists("tn_parquet_dir")) file.path(dirname(tn_parquet_dir), "benchmark-log.csv") else "/home/shiny/work/forestcast/benchmark-log.csv"
 
   get_cgroup_memory_limit <- function() {
   paths <- c(

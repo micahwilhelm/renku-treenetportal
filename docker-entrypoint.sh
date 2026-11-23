@@ -18,6 +18,10 @@
 
 envsubst < /shiny-server.conf.tpl > /etc/shiny-server/shiny-server.conf
 
+# Shiny Server does not pass the session's environment to the app; save where Renku mounts data connectors
+# so that the app can find the forestcast-data bucket (see src/r/app/scripts/tn_parquet.R)
+printf '%s\n' "${RENKU_MOUNT_DIR:-}" "${RENKU_WORKING_DIR:-}" > /tmp/renku-dirs
+
 echo "Using shiny-server.conf:"
 cat /etc/shiny-server/shiny-server.conf
 
