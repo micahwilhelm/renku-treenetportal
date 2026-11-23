@@ -43,4 +43,7 @@ USER shiny
 
 # Set the entrypoint and default command
 ENTRYPOINT ["/bin/sh", "/docker-entrypoint.sh"]
-CMD ["/init"]
+# Run shiny-server directly instead of the s6-overlay supervisor (/init).
+# s6-overlay needs root (via a setuid helper) to chown /var/run/s6, which fails
+# in Renku sessions running as UID 997 without privilege escalation.
+CMD ["/usr/bin/shiny-server"]
