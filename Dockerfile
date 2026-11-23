@@ -27,6 +27,8 @@ COPY renv.lock /home/shiny/app/renv.lock
 COPY renv /home/shiny/app/renv
 
 # Install R dependencies via renv
+# NOT_CRAN: should arrow ever be built from source, download a prebuilt libarrow instead of compiling it
+ENV NOT_CRAN=true
 RUN R -e "install.packages('renv', repos='https://cloud.r-project.org')"
 RUN R -e "renv::restore(lockfile = '/home/shiny/app/renv.lock', clean = TRUE)"
 
@@ -37,6 +39,8 @@ RUN chown shiny:shiny /etc/shiny-server/shiny-server.conf
 
 # Copy the Shiny app source code
 COPY src/r/app /home/shiny/app
+# working directories of the app: export requests and logs, temporary files
+RUN mkdir -p /home/shiny/app/exports /home/shiny/app/tmp
 
 # Fix permissions after copying everything
 RUN fix-permissions.sh /home/shiny/app /usr/local/lib/R /var/log/shiny-server

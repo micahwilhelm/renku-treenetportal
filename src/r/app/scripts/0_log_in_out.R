@@ -5,39 +5,61 @@
 # 1. UI -------------------------------------------------------------------
 m_ui_login <- function( id ) {
   
-ns <- shiny::NS(id)
-version <- "2025-07-08 11:02"
-  fluidRow( id = ns("panel_login"),
-            
-            column( width = 3, offset = 4, align = "center",
-                    
-                    div( class = "panel-body",
-                         
-                         h3("Welcome to TreeNet"),
-                         
-                         div( id = "panel-body",
-                           p("To access our data portal, please authenticate with your user credentials below."),
-                           
-                           br(),
-                           
-                           textInput( inputId = ns("user_id"), label = "Username:", width = "100%"), #value = "tnreader"),
-                           
-                           passwordInput( inputId = ns("user_pwd"), label = "Password:", width = "100%"), #value = "***REMOVED***"),
-                           
-                           br(),
-                           
-                           actionButton( inputId = ns("b_login"), label = "Login", width = "100%", class = "btn-primary" ),
-                           
-                           br()
-                         )
-                    ),
-                    
-                    div( id = ns("result_auth") ),
-                    br(),
-                    p(paste0("App last updated on ",version))
-            )
-  )
-  
+  ns <- shiny::NS(id)
+version <- "2026-11-19 17:50"
+
+fluidRow(
+  id = ns("panel_login"),
+  column(
+    width = 3,
+    offset = 4,
+    align = "center",
+    div(
+      class = "panel-body",
+      h3("Welcome to TreeNet"),
+      div(
+        id = "panel-body",
+        p(
+          "To access our data portal, please authenticate with your user credentials below."
+        ),
+        br(),
+        textInput(
+          inputId = ns("user_id"),
+          label = "Username:",
+          width = "100%"
+        ),
+        passwordInput(
+          inputId = ns("user_pwd"),
+          label = "Password:",
+          width = "100%"
+        ),
+        br(),
+        actionButton(
+          inputId = ns("b_login"),
+          label = "Login",
+          width = "100%",
+          class = "btn-primary"
+        ),
+        br()
+      )
+    ),
+    div(id = ns("result_auth")),
+    br(),
+    p(paste0("App last updated on ", version))
+  ),
+  # JS: trigger login button when Enter is pressed in username OR password field
+  tags$script(HTML(sprintf(
+    "$(document).on('keydown', '#%s, #%s', function(e) {
+         if (e.key === 'Enter' || e.which === 13) {
+           e.preventDefault();
+           $('#%s').click();
+         }
+       });",
+    ns("user_id"),
+    ns("user_pwd"),
+    ns("b_login")
+  )))
+)
 }
 
 
@@ -109,13 +131,21 @@ shiny::observeEvent(input$b_login, {
     db_con$scope  <- NULL
     db_con$username <- NULL
 
+    # credentials that match but have expired: quote the expiry date
+    expired_on <- try(get_tn_expiry(user, pwd), silent = TRUE)
+    msg <- if (!inherits(expired_on, "try-error") && !is.na(expired_on)) {
+      sprintf("Authentication failed. Your credentials expired on %s.", format(expired_on, "%Y-%m-%d"))
+    } else {
+      "Authentication failed. Invalid username or password."
+    }
+
     insertUI(
       selector = jns("result_auth"),
       ui = div(
-        id = ns("msg_usr"), 
-        class = "alert alert-danger", 
-        icon("exclamation-triangle"), 
-        HTML("Authentication failed. Invalid username or password. Please contact the <a href='mailto:micah.wilhelm@wsl.ch?subject=TreeNet Portal credentials error'>database administrator</a>.")
+        id = ns("msg_usr"),
+        class = "alert alert-danger",
+        icon("exclamation-triangle"),
+        HTML(paste(msg, "Please contact the <a href='mailto:micah.wilhelm@wsl.ch?subject=TreeNet Portal credentials error'>database administrator</a>."))
       )
     )
 
@@ -186,24 +216,44 @@ shiny::observeEvent(input$b_login, {
     shinyjs::enable("b_login")
     
     if (users$count == 0) {
-      insertUI( selector = jns("result_auth"),
-                ui = div( id = ns("msg_usr"), 
-                          class = "alert alert-info", 
-                          icon("smile"), 
-                          HTML("There are no users logged on.")))
-    } else if (users$count <= 5) {
-      insertUI( selector = jns("result_auth"),
-                ui = div( id = ns("msg_usr"), 
-                          class = "alert alert-warning", 
-                          icon("info-circle"), 
-                          HTML(paste0("There are ", users$count, " users are logged on. <br>Server response may be slower."))))
+      insertUI(
+        selector = jns("result_auth"),
+        ui = div(
+          id = ns("msg_usr"),
+          class = "alert alert-info",
+          icon("smile"),
+          HTML("There are no users logged on.")
+        )
+      )
+    } else if (users$count <= 6) {
+      insertUI(
+        selector = jns("result_auth"),
+        ui = div(
+          id = ns("msg_usr"),
+          class = "alert alert-warning",
+          icon("info-circle"),
+          HTML(paste0(
+            "There are ",
+            users$count,
+            " users are logged on. <br>Server response may be slower."
+          ))
+        )
+      )
     } else {
       shinyjs::disable("b_login")
-      insertUI( selector = jns("result_auth"),
-                ui = div( id = ns("msg_usr"), 
-                          class = "alert alert-danger", 
-                          icon("exclamation-triangle"), 
-                          HTML(paste0("There are ", users$count, " users logged on. <br>This is the maximum load for our server. <br>Please try again later."))))
+      insertUI(
+        selector = jns("result_auth"),
+        ui = div(
+          id = ns("msg_usr"),
+          class = "alert alert-danger",
+          icon("exclamation-triangle"),
+          HTML(paste0(
+            "There are ",
+            users$count,
+            " users logged on. <br>This is the maximum load for our server. <br>Please try again later."
+          ))
+        )
+      )
     }
   })
   

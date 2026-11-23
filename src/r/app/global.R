@@ -1,54 +1,118 @@
 #' This is a test application to serve as the login page.
-#' THe login is based on the connect function
+#' The login is based on the connect function
 #' This is a minimum example and can be much extended
 # 0. Libraries ------------------------------------------------------------
 
 suppressPackageStartupMessages({
-	#remotes::install_github("daattali/shinytip")
-	library(shinytip)
+	library(shiny)
+	library(DBI)
 	library(shinyjs)
+	library(shinytip)
 	library(shinyvalidate)
-	library(shinyWidgets)
 	library(dplyr)
 	library(dygraphs)
 	library(DT)
-	library(DBI)
-	library(sqldf)
-	library(RSQLite)
-  library(dbplyr)
-  library(purrr)
-  library(stringi)
-  library(stringr)
-  library(tidyr)
-  library(data.table)
-  library(zip)
+	library(waiter)
 })
 
 users <- reactiveValues(count = 0)
+source('scripts/tn_timezone.R')
+source('scripts/tn_parquet.R')   # Renku: data are read from the Parquet export, not PostgreSQL
 source('scripts/0_log_in_out.R')
 options(shiny.fullstacktrace = T)
 options(shiny.autoreload = F)
 options(shiny.trace = F)
 options(warn = 0)
+# Sys.setenv(TMPDIR = "/home/wilhelm/tmp")
+dir.create("tmp", showWarnings = FALSE, recursive = TRUE)
+Sys.setenv(TMPDIR = normalizePath("tmp"))
+dir.create("exports", showWarnings = FALSE, recursive = TRUE)   # parameter files and export logs
+
+# Renku: the login credentials are a Renku session secret, mounted as a file
+tn_creds_file <- Sys.getenv("TREENET_CREDS", "/secrets/login_creds.csv")
+
+parse_validity <- function(x, formats = c("%Y-%m-%d", "%d.%m.%Y", "%Y/%m/%d")){
+	# convert the validity strings to Date, trying each format per element; NA if none fits
+	x   <- trimws(as.character(x))
+	out <- as.Date(rep(NA_character_, length(x)))
+	for (f in formats) {
+		todo <- is.na(out) & !is.na(x) & nzchar(x)
+		if (!any(todo)) break
+		out[todo] <- as.Date(x[todo], format = f)
+	}
+	out
+}
+
+read_tn_creds <- function(){
+	# read the credentials and add the parsed expiry date as `valid_until`
+	# the file is semicolon-delimited so that a limit may contain commas, e.g. %in% c('a','b'); trim_ws is
+	# needed because read_delim (unlike read_csv) keeps the tab/space padding used to align the columns
+	cred <- readr::read_delim(tn_creds_file, delim=";", trim_ws=TRUE, col_types=readr::cols())
+	if (!"validities" %in% names(cred)) {
+		warning(tn_creds_file, " has no 'validities' column; all logins are refused.")
+		cred$validities <- NA_character_
+	}
+	cred$valid_until <- parse_validity(cred$validities)
+	cred
+}
+
+tn_scope_expr <- function(scopes, limits){
+	# build the filter expression (a string) for each scope/limit pair
+	# - scope 'site_name' with a limit that does not start with an R operator is a comma-separated list
+	#   of substrings: a site matches if its name contains any of them (case-insensitive, literal),
+	#   e.g. "Neunkirch" or "Davos-Seehornwald, Laegeren"
+	# - everything else (e.g. "== 'x'", "%in% c('a','b')", "!= ''", scope 'country') is kept as `scope limit`
+	# an element is NA if it grants nothing (no usable substring), so that the caller can drop it (fail closed)
+	scopes <- trimws(as.character(scopes))
+	limits <- trimws(as.character(limits))
+	op_re  <- "^(==|!=|<|>|!|%[^%]*%)"
+	vapply(seq_along(scopes), function(i){
+		if (identical(scopes[i], "site_name") && !is.na(limits[i]) && !grepl(op_re, limits[i])) {
+			subs <- trimws(strsplit(limits[i], ",", fixed = TRUE)[[1]])
+			subs <- unique(tolower(subs[nzchar(subs)]))
+			if (length(subs) == 0) return(NA_character_)
+			paste(sprintf("grepl(%s, tolower(site_name), fixed = TRUE)", vapply(subs, deparse, "")), collapse = " | ")
+		} else {
+			paste(scopes[i], limits[i])
+		}
+	}, character(1))
+}
 
 get_tn_scope <- function(username=NULL, password=NULL){
 	# validate user credentials and specify data access
-	cred <- readr::read_csv("/secrets/login_creds.csv", col_types=readr::cols())
-	mask    <- cred$usernames %in% username & cred$passwords %in% password
+	# a credential is valid up to and including the date in the `validities` column;
+	# a missing or unparsable date is treated as expired (fail closed)
+	cred    <- read_tn_creds()
+	matched <- cred$usernames %in% username & cred$passwords %in% password
+	valid   <- !is.na(cred$valid_until) & cred$valid_until >= Sys.Date()
+	mask    <- matched & valid
+	
+	if (any(matched & !mask)) message("Login refused for '", username, "': credentials expired or validity date missing.")
 	
 	if (any(mask)) {
-		out <- paste(cred$scopes, cred$limits)[mask]
+		out <- tn_scope_expr(cred$scopes, cred$limits)[mask]
+		out <- out[!is.na(out)]
+		if (length(out) == 0) return(NULL)
 		return(out)
 	} else {
 		return(NULL)
 	}
 }
 
+get_tn_expiry <- function(username=NULL, password=NULL){
+	# expiry date of credentials that match but have expired; NA if there is no such match
+	# (wrong username/password, still valid, or no readable validity date)
+	cred    <- read_tn_creds()
+	matched <- cred$usernames %in% username & cred$passwords %in% password
+	expired <- matched & !is.na(cred$valid_until) & cred$valid_until < Sys.Date()
+	if (any(expired)) max(cred$valid_until[expired]) else as.Date(NA)
+}
+
 toDT <- function(x){
 	#' @description create a data table from the data.frame
 	x %>% 
 		DT::datatable(escape   = FALSE,
-									rownames = TRUE,
+									rownames = F,
 									list(dom       = 'Bft',
 											 scrollX   = TRUE,
 											 # autoWidth = TRUE,
@@ -84,95 +148,26 @@ get_connection_string <- function(db_host){
 	return( out )
 }
 
+# Renku: a "connection" only records where the Parquet export is. It is a DBIConnection so that the
+# DBI::dbDisconnect() calls in server.R and 0_log_in_out.R work unchanged.
+setClass("TnParquetConnection", contains = "DBIConnection", slots = c(root = "character"))
+setMethod("dbDisconnect", "TnParquetConnection", function(conn, ...) invisible(TRUE))
+
 dbConnect_tn <- function(
   username,
   password,
-  db_host = 'pgdbtreenet',
-  db_name = NULL,
-  max_retries = 10,
-  retry_delay = 1 # in seconds
+  db_host = NULL,   # unused, kept for the call in 0_log_in_out.R
+  db_name = NULL    # unused
 ) {
-  hosts <- c("pgdb01", "pgdb01dev", "postgres", "localhost", "pgdbtapp", "pgdbtreenet")
-
-  # Check db_name requirement
-  if (db_host %in% hosts && is.null(db_name)) {
-    shiny::showNotification("Error: db_name is required when connecting to this host.", type = "error")
-    stop("For the PostgreSQL database, db_name is required!")
+  if (is.null(get_tn_scope(username, password))) {
+    shiny::showNotification("Invalid user scope or authentication failed.", type = "error")
+    stop("User authentication failed.")
   }
-
-  connection_string <- tryCatch(
-    get_connection_string(db_host = db_host),
-    error = function(e) {
-      shiny::showNotification(paste("Error getting connection string:", e$message), type = "error")
-      stop("Could not get connection string.")
-    }
-  )
-
-  # Retry logic
-  for (attempt in seq_len(max_retries)) {
-    try({
-      if (!is.null(get_tn_scope(username, password))) {
-        conn <- DBI::dbConnect(RSQLite::SQLite(), "/home/shiny/work/forestcast/treenet.sqlite")
-
-        shiny::showNotification("Database connection established.", type = "message", duration = 3)
-        return(conn)
-      } else {
-        shiny::showNotification("Invalid user scope or authentication failed.", type = "error")
-        stop("User authentication failed.")
-      }
-    }, silent = TRUE)
-
-    # If we got here, the attempt failed
-    if (attempt < max_retries) {
-      delay <- retry_delay * 2^(attempt - 1) # exponential backoff
-      message(sprintf("Connection attempt %d failed. Retrying in %d seconds...", attempt, delay))
-      Sys.sleep(delay)
-    } else {
-      shiny::showNotification("Error: Failed to connect to the database after multiple attempts.", type = "error")
-      message("Final attempt failed. Could not connect to the database.")
-      return(NULL)
-    }
+  if (!file.exists(file.path(tn_parquet_dir, "view_metadata.parquet"))) {
+    shiny::showNotification("The TreeNet data export is not available in this session.", type = "error")
+    stop("No Parquet export found in ", tn_parquet_dir)
   }
-}
-
-
-dbConnect_tn_old <- function(
-	username,
-	password,
-	db_host = 'pgdbtreenet',
-	db_name = NULL
-){
-	
-	hosts     <- c("pgdb01", "pgdb01dev", "postgres", "localhost", "pgdbtapp", "pgdbtreenet")
-	
-	if( db_host %in% hosts & is.null(db_name)){
-		out <- NULL
-		stop("For the PostgreSQL database db_name is required!")
-	}
-	
-	connection_string <- get_connection_string(db_host=db_host)
-	
-	tryCatch(
-		expr = {
-			
-			# if( !is.null(get_tn_scope(username, password)) ){
-				out <- DBI::dbConnect(drv      = RPostgres::Postgres(),
-															dbname   = db_name,
-															host     = connection_string[['host']],
-															port     = connection_string[['port']],
-															user     = "tnreader",
-															password = "***REMOVED***")
-			# }
-			
-			return( out )
-			
-		},
-		error = function( cond ){
-			message( "Error, could not connect to the database \n" )
-			message( cond )
-			return( NA )
-		}
-	)
+  new("TnParquetConnection", root = tn_parquet_dir)
 }
 
 
@@ -271,29 +266,43 @@ get_tn_data <- function(
 
 tbl_tn <- function(
 	conn,
-	schema = 'public',
+	schema = 'public',   # unused, kept for the calls in 2_server_adata_vis.R
 	table = 'view_metadata',
 	col = c('*'),
 	retrieve = FALSE){
-	
-	if( class(conn) %in% c("OraConnection", "PqConnection")){
-		
-		tbl_out <- dplyr::tbl( conn, dplyr::sql( paste0( 'select ', paste0(col, collapse = ", "), ' from "', schema, '"."', table, '"') ) )
-		
-		if( retrieve ){
-			dplyr::collect( tbl_out )
-		}
-		
-	}else{
-		
-		cat('The Database connection is invalid!')
-		
-		tbl_out <- NULL
-		
+	#' @description Renku: an index table from the Parquet export as a tibble (dplyr verbs and collect() work as on
+	#' the database). import_log is limited to the data tables that were exported, so that the app never lists
+	#' series it cannot export.
+
+	tbl_out <- tn_read_index(table)
+	if (table == "import_log") {
+		tbl_out <- dplyr::filter(tbl_out, table_name %in% tn_parquet_tables())
 	}
-	
-	return(tbl_out)
-	
+	if (!identical(col, '*')) {
+		tbl_out <- dplyr::select(tbl_out, dplyr::all_of(col))
+	}
+	tbl_out
 }
+
+tn_series_with_rows <- function(conn, df, from, to, tz = tn_default_tz, timeout_s = 60){
+	#' @description Renku: no exact check. On PostgreSQL this probes the data tables for at least one row per series
+	#' in the period; on the Parquet export that means opening every chunk of the table in the bucket (thousands of
+	#' files), far too slow for an interactive filter. The table therefore relies on import_log and view_coverage,
+	#' and an export of a series without rows in the period reports that no data are available.
+	rep(TRUE, nrow(df))
+}
+
+# filesender <- function(data,
+# 											 recipient, 
+# 											 filename = paste0("exports/tn_",recipient,"_",lubridate::now() %>% gsub(" ","-",.) %>% gsub(":","",.), ".csv"), 
+# 											 logfile = paste0("exports/",lubridate::today(),".log")) {
+# 	write.csv(data, filename, row.names = F)
+# 	command <- sprintf(
+# 	paste0("nohup python3 scripts/filesender.py ",filename," -r ",recipient ," >> %s 2>&1"),
+# 	logfile
+# )
+# 	system(command, wait = F)
+# 
+# }
 
 

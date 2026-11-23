@@ -1,19 +1,21 @@
-ui <- fluidPage(
-    
-    shinyjs::useShinyjs(),
-    tags$script(HTML("
-    	$(document).on('keypress', function(e) {
-    	  if (e.which === 13 && $('#login-user_pwd').is(':focus')) {
-    	    $('#login-b_login').click();
-    	  }
-    	});
-    	")),
-    # add logout button UI 
-    m_ui_logout(id = "logout"),
-    # add login panel UI function
-    m_ui_login(id = "login"),
-    uiOutput("ui_adata_vis")
-  )
+ui <- shiny::fluidPage(
+  shinyjs::useShinyjs(),
+  waiter::useWaiter(),
+  # loading indicator over the data table while it is being recalculated (data checks, date / time zone changes)
+  waiter::autoWaiter(
+    id = "table_out",
+    html = htmltools::tagList(waiter::spin_wave(), htmltools::h4("Loading data …")),
+    color = "rgba(51, 62, 72, 0.75)"
+  ),
+  # add logout button UI
+  m_ui_logout(id = "logout"),
+  # add login panel UI function
+  m_ui_login(id = "login"),
+  uiOutput("ui_adata_vis")
+)
+
+# Run app
+# shiny::runApp(".", launch.browser = T) #function(url) system2("xdg-open", url))
 
 
 # Deploy app

@@ -1,7 +1,10 @@
 server <- function(input, output, session) {
-    print(getwd())
-	
+    
     #users <- reactiveValues(count = 0)
+      # ensure shared users reactive (near top of server)
+if (!exists("users") || !inherits(users, "reactivevalues")) {
+  users <- reactiveValues(count = 0, list = character(0))
+}
 
     #source('scripts/0_log_in_out.R', local = T)
 
@@ -25,33 +28,58 @@ server <- function(input, output, session) {
     source('scripts/2_server_adata_vis.R', local=TRUE)
 
     # 3. Admin panel ----------------------------------------------------------
-    output$ui_admin_panel <- renderUI({
-    if (!is.null(user_con$username) && user_con$username == "wilhelm") {
-      actionButton("admin_disconnect", "Disconnect all users")
-    }})
-    observeEvent(input$admin_disconnect, {session$close()})
-    
-    # testing
-    # result <- eventReactive(input$run, {
-    # 	tryCatch({
-    # 		system(input$command, intern = TRUE)
-    # 	}, error = function(e) {
-    # 		paste("Error:", e$message)
-    # 	})
-    # })
-    # 
-    # output$output <- renderText({
-    # 	paste(result(), collapse = "\n")
-    # })
+  
+  # render the user list only for admin
+output$ui_admin_panel <- renderUI({
+  if (!is.null(user_con$username) && user_con$username == "micah.wilhelm@wsl.ch") {
+    ul_items <- isolate(users$list)
+    if (length(ul_items) == 0) {
+      div(class = "panel panel-default",
+          div(class = "panel-heading", "Logged-on users"),
+          div(class = "panel-body", "No users logged on")
+      )
+    } else {
+      div(class = "panel panel-default",
+          div(class = "panel-heading", "Logged-on users"),
+          div(class = "panel-body",
+              tags$ul(lapply(ul_items, tags$li)),
+              actionButton("admin_disconnect", "Disconnect all users")
+          )
+      )
+    }
+  } else {
+    NULL
+  }
+})
 
-    # Session end -------------------------------------------------------------
-    session$onSessionEnded(function(){
-      if( isolate(user_con$logged )){
-        DBI::dbDisconnect( isolate(user_con$cc ))
-        isolate({users$count <- users$count - 1})
-      }
-      # stopApp()
+# keep users$list in sync with your login module
+observeEvent(user_con$logged, ignoreInit = TRUE, {
+  if (isTRUE(isolate(user_con$logged))) {
+    uname <- isolate(user_con$username)
+    if (!is.null(uname) && nzchar(uname)) {
+      users$list <- unique(c(isolate(users$list), uname))
+    }
+  } else {
+    uname <- isolate(user_con$username)
+    users$list <- setdiff(isolate(users$list), uname)
+  }
+  users$count <- length(isolate(users$list))
+})
+  
+observeEvent(input$admin_disconnect, {session$close()})
+
+
+# Session end -------------------------------------------------------------
+# remove user on session end
+session$onSessionEnded(function() {
+  if (isolate(user_con$logged)) {
+    DBI::dbDisconnect(isolate(user_con$cc))
+    isolate({
+      users$list <- setdiff(users$list, isolate(user_con$username))
+      users$count <- length(users$list)
     })
+  }
+})
     # Set this to "force" instead of TRUE for testing locally (without Shiny Server)
     session$allowReconnect(TRUE)
-  }
+}

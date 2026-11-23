@@ -1,256 +1,495 @@
-#' Once the user logged-in, retrieve all the necessary data for the analysis.
-#' We first test if there is a connection, and later after isolating the connection
-#' we get all the needed data for the analysis. We assign them with `<<-` so the data
-#' are also available afterward, outside of this observe part. 
+#' Server: data selection and export (cleaned & reorganized)
+#'
+#' Responsibilities:
+#'  - load metadata (info.df) once user logged in
+#'  - expose reactive tables: dataqual.tbl, available.tbl, window_rows, filtered.tbl
+#'  - update VirtualSelect inputs (tree_genus_species, site_name, variable_name)
+#'  - export selected data via filesender.R
 
+# Per-session state. This file is sourced with local = TRUE, so these live in the session's server
+# environment; the `<<-` assignments below update them there instead of creating process-wide globals that
+# other users' sessions would overwrite.
+db_conn <- NULL
+info.df <- NULL
 
-# 1.  Get the configuration information data ------------------------------
+# Debounced dataqual and choice trackers (single definitions)
+dataqual_debounce <- reactive(input$dataqual) %>% debounce(500)
+# The date range fires on every edit while typing / picking dates; wait until it settles, so that the
+# data-availability check (window_rows) and the table only run once per period.
+daterange_debounce <- reactive(input$daterange) %>% debounce(800)
+prev_species <- reactiveVal(character())
+prev_sites <- reactiveVal(character())
+job_id <- reactiveVal(NULL)
+
+# 1. Load configuration / metadata and set initial choices ------------------
 observe({
-  
   req(user_con$scope, user_con$logged)
-  
-  # Connect to SQLite instead of PostgreSQL
-  db_conn <<- DBI::dbConnect(RSQLite::SQLite(), "/home/shiny/work/forestcast/treenet.sqlite")
-  scope <- user_con$scope
 
-  # Replace tbl_tn with DBI::dbReadTable or dplyr::tbl for SQLite
-  info.df <<- dplyr::tbl(db_conn, 'view_metadata') %>%
-    dplyr::collect() %>% 
+  # populate DB connection and metadata
+  db_conn <<- user_con$cc
+  scope <- user_con$scope
+  info.df <<- tbl_tn(db_conn, 'public', 'view_metadata') %>%
+    dplyr::collect() %>%
     dplyr::filter(., rlang::eval_tidy(rlang::parse_expr(scope)))
 
-  import.df <<- dplyr::tbl(db_conn, 'import_log') %>%
-    dplyr::collect()
-  DBI::dbDisconnect(db_conn)
+  # compute species choices with meteorological code allowed only for L0/L1
+  tmp_species <- sort(unique(info.df$tree_genus_species))
+  species_choices <- setdiff(tmp_species, "-999 -999")
 
-  tmp.choices <- unique(info.df$tree_genus_species) %>% sort()
-  shinyWidgets ::updatePickerInput(session, inputId = "tree_genus_species", choices = tmp.choices[!tmp.choices %in% "-999 -999"]) # [!tmp.choices %in% "NA NA"]
-  tmp.choices <- unique(info.df$site_name) %>% sort()
-  shinyWidgets ::updatePickerInput(session, inputId = "site_name", choices = tmp.choices) 
-
-}) 
-
-# 2.  Reactive filtering of variables -------------------------------------
-table_out_rows_debounce <- reactive(input$table_out_rows_selected) %>% debounce(2000)
-dataqual_id_debounce    <- reactive(input$dataqual_id) %>% debounce(2000)
-
-# DATA QUALITY
-dataqual.tbl <- reactive({ 
-  req(user_con$logged, dataqual_id_debounce())
-  if (dataqual_id_debounce() == "LM") {
-    table.name <- "data_dendro_lm"
-  } else if (dataqual_id_debounce() == "L2") {
-    table.name <- "data_dendro_l2"
-  } else if (dataqual_id_debounce() == "L1") {
-    table.name <- "data_all_l1"
+  # update species select only when changed
+  if (!identical(species_choices, prev_species())) {
+    prev_species(species_choices)
+    freezeReactiveValue(input, "tree_genus_species")
+    shinyWidgets::updateVirtualSelect(
+      session = session,
+      inputId = "tree_genus_species",
+      choices = species_choices,
+      selected = intersect(isolate(input$tree_genus_species), species_choices)
+    )
   }
-    # info.df
-    import.df %>%
-      dplyr::filter(table_name == table.name) %>% 
-      dplyr::collect() %>% 
-      dplyr::mutate(db_start = import_from,
-                    db_stop  = import_until) %>% 
-      dplyr::left_join(., info.df, by = "series_id") #dplyr::select(info.df, -c(series_start,series_stop)), by = "series_id")
 
+  # sites: update only when changed
+  tmp_sites <- sort(unique(info.df$site_name))
+  if (!identical(tmp_sites, prev_sites())) {
+    prev_sites(tmp_sites)
+    freezeReactiveValue(input, "site_name")
+    shinyWidgets::updateVirtualSelect(
+      session = session,
+      inputId = "site_name",
+      choices = tmp_sites,
+      selected = intersect(isolate(input$site_name), tmp_sites)
+    )
+  }
 })
 
-available.tbl <- reactive({
-  req(dataqual.tbl())
-
-  filter(dataqual.tbl(), 
-           tree_genus_species %in% input$tree_genus_species,
-           site_name %in% input$site_name)
-  })
-
-# AVAILABLE SPECIES & SITEs
-# observe({
-#   req(dataqual.tbl())
-#   df <- dataqual.tbl()
-  
-#   # Get current selections
-#   selected_species <- input$tree_genus_species
-#   selected_site    <- input$site_name
-
-#   # Start with all choices
-#   species_choices <- sort(unique(df$tree_genus_species))
-#   site_choices    <- unique(df$site_name)
-
-#   # Filter choices based on the other input
-#   if (!is.null(selected_site) && length(selected_site) > 0) {
-#     species_choices <- sort(unique(df$tree_genus_species[df$site_name %in% selected_site]))
-#   }
-#   if (!is.null(selected_species) && length(selected_species) > 0) {
-#     site_choices <- sort(unique(df$site_name[df$tree_genus_species %in% selected_species]))
-#   }
-
-#   # Update pickers (use shinyWidgets::updatePickerInput if you use pickerInput)
-#   shinyWidgets::updatePickerInput(session, "tree_genus_species", choices = species_choices, selected = selected_species)
-#   shinyWidgets::updatePickerInput(session, "site_name",     choices = site_choices,    selected = selected_site)
-# })
-
-observe({
-  req(dataqual.tbl())
-  df <- dataqual.tbl()
-  
-  # All possible choices
-  all_species <- sort(unique(df$tree_genus_species))
-  all_sites   <- sort(unique(df$site_name))
-  
-  # Get current selections
-  selected_species <- input$tree_genus_species
-  selected_site    <- input$site_name
-
-  # Which species are enabled given selected site(s)?
-  enabled_species <- all_species
-  if (!is.null(selected_site) && length(selected_site) > 0) {
-    enabled_species <- sort(unique(df$tree_genus_species[df$site_name %in% selected_site]))
-  }
-  species_disabled <- !(all_species %in% enabled_species)
-
-  # Which sites are enabled given selected species?
-  enabled_sites <- all_sites
-  if (!is.null(selected_species) && length(selected_species) > 0) {
-    enabled_sites <- sort(unique(df$site_name[df$tree_genus_species %in% selected_species]))
-  }
-  sites_disabled <- !(all_sites %in% enabled_sites)
-
-  # Update pickers with disabled options
-  shinyWidgets::updatePickerInput(
-    session, "tree_genus_species",
-    choices = all_species,
-    selected = selected_species,
-    choicesOpt = list(disabled = species_disabled)
-  )
-  shinyWidgets::updatePickerInput(
-    session, "site_name",
-    choices = all_sites,
-    selected = selected_site,
-    choicesOpt = list(disabled = sites_disabled)
-  )
-})
-
-
-# FILTERED
-filtered.tbl <- reactive({ 
-  req(input$daterange_id)
-  # if (is.null(input$daterange_id)) {
-  # filter(species.tbl(), 
-  #        site_name %in% input$site_name %>% 
-  #   dplyr::arrange(measure_point) 
-  # } else {
-  filter(available.tbl(), 
-         db_start <= lubridate::ymd_hm(input$daterange_id[2], truncated = 2),
-         # is.na(series_stop) | 
-         db_stop >= lubridate::ymd_hm(input$daterange_id[1], truncated = 2)) %>% #CLEANED 1997-2023: 342(db) 573(series)     RAW 1997-2024: 612 (db/series) 
-    dplyr::arrange(measure_point) 
-  # }
-}) #%>% 
-# debounce(400)
-
-
-# DATE RANGE
-dates <- reactiveValues(
-  start = lubridate::ymd("2020-12-01"),
-  end   = lubridate::ymd("2020-12-31")
+# 2. Variable visibility toggling by dataqual -------------------------------
+observeEvent(
+  dataqual_debounce(),
+  {
+    if (dataqual_debounce() %in% c("L0", "L1")) {
+      shinyWidgets::updateVirtualSelect(
+        inputId = "variable_name",
+        session = session,
+        disabledChoices = character(0)
+      )
+    } else if (dataqual_debounce() == "L3") {
+      shinyWidgets::updateVirtualSelect(
+        inputId = "variable_name",
+        session = session,
+        disabledChoices = c(
+					"tree branch radius change",
+					"tree root radius change",
+					"tree xylem radius change",
+					"tree reference radius change",
+					"tree stem carbon dioxide",
+					"tree stem carbon dioxide soil",
+					"tree stem temperature",
+					"tree sap flow",
+					"tree sap flow alpha inner",
+					"tree sap flow alpha outer",
+					"tree sap flow beta inner",
+					"tree sap flow beta outer",
+					"tree sap flow heat velocity inner",
+					"tree sap flow heat velocity outer",
+					"tree sap flow pulse energy",
+					"tree sap flow pulse time",
+					"tree sap flow swc inner",
+					"tree sap flow swc outer",
+					"tree sap flow temp outer",
+					"tree sap flow tmax inner",
+					"tree sap flow tmax max inner upstream",
+					"tree sap flow tmax outer",
+					"tree sap flow tmax outer upstream",
+					"tree sap flow vhc inner",
+					"tree sap flow vhc outer",
+          "air pressure",
+          "net solar radiation",
+          "ozone concentration",
+          "photosynthetically active radiation",
+          "precipitation",
+          "precipitation interval",
+          "wind direction",
+          "wind speed",
+          "soil dielectric permittivity",
+          "soil electrical conductivity",
+          "soil volumetric water content"
+        )
+      )
+    } else {
+      shinyWidgets::updateVirtualSelect(
+        inputId = "variable_name",
+        session = session,
+        disabledChoices = c(
+          "air pressure",
+          "air temperature",
+          "net solar radiation",
+          "ozone concentration",
+          "photosynthetically active radiation",
+          "precipitation",
+          "precipitation interval",
+          "relative humidity",
+          "wind direction",
+          "wind speed",
+          "soil dielectric permittivity",
+          "soil electrical conductivity",
+          "soil temperature",
+          "soil volumetric water content",
+          "soil water potential"
+        )
+      )
+    }
+  },
+  ignoreInit = TRUE
 )
 
-observeEvent(input$daterange_id, {
-  req(input$daterange_id[[1]],input$daterange_id[[2]])
-  start <- lubridate::ymd(input$daterange_id[[1]])
-  end   <- lubridate::ymd(input$daterange_id[[2]])
-  if (start >= end){
-    showNotification("The start date cannot be after the end date!", type = "error")
-    updateDateRangeInput(
-      session = session, 
-      inputId =  "daterange_id", 
-      start   = dates$start,
-      end     = dates$end
-    )
-  } else {
-    dates$start <- input$daterange_id[[1]]
-    dates$end   <- input$daterange_id[[2]]
+# 3. DATA QUALITY table (select correct import_log table/coverage) ----------
+# view_coverage and import_log are downloaded once per session and level and kept here (this file is
+# sourced with local = TRUE, so the cache belongs to the session). Switching back to a level that was
+# already opened is instant; the data are refreshed when the user logs in again / reloads the page.
+dataqual_cache <- new.env(parent = emptyenv())
+coverage_cache <- new.env(parent = emptyenv())
+
+dataqual.tbl <- reactive({
+  req(user_con$logged, dataqual_debounce())
+  dq <- dataqual_debounce()
+  if (!is.null(dataqual_cache[[dq]])) return(dataqual_cache[[dq]])
+
+  # Dendrometer series are processed into separate "_dendro_" tables (and
+  # tracked by separate view_coverage columns) for L2/L3/LM; all other series
+  # use the "_all_"/plain ones. L0/L1 raw data isn't split by sensor_class,
+  # and LM only exists for dendrometers.
+  table_all    <- switch(dq,
+    L0 = "data_all_l0", L1 = "data_all_l1",
+    L2 = "data_all_l2", L3 = "data_all_l3",
+    LM = NA_character_,
+    stop("unsupported dataqual")
+  )
+  table_dendro <- switch(dq,
+    L0 = "data_all_l0",    L1 = "data_all_l1",
+    L2 = "data_dendro_l2", L3 = "data_dendro_l3",
+    LM = "data_dendro_lm"
+  )
+  coverage_all    <- switch(dq,
+    L0 = "coverage_l0", L1 = "coverage_l1",
+    L2 = "coverage_l2", L3 = "coverage_l3",
+    LM = NA_character_
+  )
+  coverage_dendro <- switch(dq,
+    L0 = "coverage_l0",        L1 = "coverage_l1",
+    L2 = "coverage_dendro_l2", L3 = "coverage_dendro_l3",
+    LM = "coverage_dendro_lm"
+  )
+
+  # only keep series that actually have data at this quality level, per
+  # view_coverage, instead of assuming every series in view_metadata does.
+  # view_coverage also has its own series_start/series_stop columns; drop
+  # them here so they don't collide with view_metadata's below.
+  # the same table serves all levels, so it is downloaded only once
+  if (is.null(coverage_cache$long)) {
+    coverage_cache$long <- tbl_tn(db_conn, 'public', 'view_coverage') %>%
+      dplyr::collect() %>%
+      dplyr::select(series_id, dplyr::starts_with("coverage_")) %>%
+      tidyr::pivot_longer(
+        dplyr::starts_with("coverage_"),
+        names_to  = "coverage_col",
+        values_to = "coverage_pct"
+      )
   }
-}, ignoreInit = TRUE)
+  covg_long <- coverage_cache$long
+
+  info.lvl <- info.df %>%
+    dplyr::mutate(
+      is_dendro    = sensor_class == "Dendrometer",
+      table_name   = dplyr::if_else(is_dendro, table_dendro, table_all),
+      coverage_col = dplyr::if_else(is_dendro, coverage_dendro, coverage_all)
+    ) %>%
+    dplyr::filter(!is.na(table_name)) %>%
+    dplyr::left_join(covg_long, by = c("series_id", "coverage_col")) %>%
+    dplyr::filter(!is.na(coverage_pct), coverage_pct > 0) %>%
+    dplyr::select(-is_dendro, -coverage_col, -coverage_pct)
+
+  table_names <- unique(stats::na.omit(c(table_all, table_dendro)))
+
+  out <- tbl_tn(db_conn, 'public', 'import_log') %>%
+    dplyr::filter(table_name %in% table_names) %>%
+    dplyr::collect() %>%
+    dplyr::mutate(db_start = first_date, db_stop = last_date) %>%
+    dplyr::inner_join(info.lvl, by = c("series_id", "table_name"))
+
+  dataqual_cache[[dq]] <- out
+  out
+})
 
 observe({
-  req(input$dataqual_id)
-  if (input$dataqual_id == "LM") {
-    date.max     <- lubridate::floor_date(Sys.Date(), "years")-1
-    date.start   <- lubridate::ceiling_date(Sys.Date(), "years")-lubridate::years(2)
-    date.end     <- date.start+30
+  req(dataqual_debounce())
+  # "today" is the date in the selected time zone; isolate: changing the zone must not reset the user's date range
+  today <- lubridate::today(tzone = tn_valid_tz(isolate(input$timezone)))
+  if (dataqual_debounce() == "LM" | dataqual_debounce() == "L3") {
+    date.max <- lubridate::floor_date(today, "years") - 1
+    date.start <- lubridate::ceiling_date(today, "years") -
+      lubridate::years(2)
+    date.end <- date.start + 30
   } else {
-    date.max     <- Sys.Date()
-    date.start   <- date.max-30
-    date.end     <- date.max
+    date.max <- today
+    date.start <- date.max - 30
+    date.end <- date.max
   }
   updateDateRangeInput(
     session = session,
-    inputId = "daterange_id",
-    start   = date.start,
-    end     = date.end,
-    max     = date.max
+    inputId = "daterange",
+    start = date.start,
+    end = date.end,
+    max = date.max
   )
-  
-  # if( diff( c(input$daterange_id[1], input$daterange_id[2]), unit = 'days') > 180 ) {
-  #   updateDateRangeInput(session, inputId = "daterange_id",
-  #                        start = as.POSIXct(input$daterange_id[2]) - as.difftime(180, unit="days"),
-  #                        end = input$daterange_id[2],
-  #                        min = "2001-01-01",  max = Sys.Date()+1)
-  # 
-  #   showNotification("The date range is too large. Maximum 180 days are allowed!", type = 'error')
-  # }
 })
 
+# 4. Available table (apply user selections safely) -------------------------
+available.tbl <- reactive({
+  req(dataqual.tbl())
+  df <- dataqual.tbl()
 
+  # allowed visible species (never show meteorological)
+  allowed_visible_species <- setdiff(
+    sort(unique(df$tree_genus_species)),
+    "-999 -999"
+  )
 
-# 3. A data table visualization -------------------------------------------
-displayed.tbl <- eventReactive(filtered.tbl(),{
+  sel_species <- if (
+    !is.null(input$tree_genus_species) && length(input$tree_genus_species) > 0
+  ) {
+    intersect(input$tree_genus_species, allowed_visible_species)
+  } else {
+    allowed_visible_species
+  }
+
+  sel_site <- if (!is.null(input$site_name) && length(input$site_name) > 0) {
+    intersect(input$site_name, sort(unique(df$site_name)))
+  } else {
+    sort(unique(df$site_name))
+  }
+
+  sel_variable <- if (
+    !is.null(input$variable_name) && length(input$variable_name) > 0
+  ) {
+    intersect(input$variable_name, sort(unique(df$variable_name)))
+  } else {
+    sort(unique(df$variable_name))
+  }
+
+  df %>%
+    dplyr::filter(
+      # include rows matching the visible selection OR meteorological code when L0/L1
+      (tree_genus_species %in% sel_species) |
+        (dataqual_debounce() %in%
+          c("L0", "L1", "L3") &
+          tree_genus_species == "-999 -999"),
+      site_name %in% sel_site,
+      variable_name %in% sel_variable
+    )
+})
+
+# 5. Keep VirtualSelect choices in sync (idempotent updates) -----------------
+observe({
+  req(dataqual.tbl())
+  df <- dataqual.tbl()
+
+  # compute possible choices depending on current dataqual
+  all_species <- sort(unique(df$tree_genus_species))
+  all_sites <- sort(unique(df$site_name))
+
+  new_species <- setdiff(sort(unique(df$tree_genus_species)), "-999 -999")
+  new_sites <- all_sites
+
+  # preserve intersection with current selection when computing 'selected'
+  current_species_sel <- intersect(
+    isolate(input$tree_genus_species),
+    new_species
+  )
+  current_site_sel <- intersect(isolate(input$site_name), new_sites)
+
+  if (!identical(new_species, prev_species())) {
+    prev_species(new_species)
+    freezeReactiveValue(input, "tree_genus_species")
+    shinyWidgets::updateVirtualSelect(
+      session = session,
+      inputId = "tree_genus_species",
+      choices = new_species,
+      selected = current_species_sel
+    )
+  }
+
+  if (!identical(new_sites, prev_sites())) {
+    prev_sites(new_sites)
+    freezeReactiveValue(input, "site_name")
+    shinyWidgets::updateVirtualSelect(
+      session = session,
+      inputId = "site_name",
+      choices = new_sites,
+      selected = current_site_sel
+    )
+  }
+})
+
+# 6. Filtered table by date range ------------------------------------------
+# import_log only stores one [min, max] range per series (and view_coverage is derived
+# from it), so it can list series whose table holds no rows in the selected period; a
+# download of those fails with "no data available". For the levels below the listing is
+# therefore confirmed against the data tables themselves (tn_series_with_rows()).
+# L0/L1 are skipped: their tables are large (probing takes ~20-30 s) and no stale
+# import_log entries were found there.
+exact_check_levels <- c("L0", "L1", "L2", "L3", "LM")
+
+# The time zone selected in the dropdown (falls back to the default before the UI exists).
+selected_tz <- reactive(tn_valid_tz(input$timezone))
+
+# TRUE where the [db_start, db_stop] range of a series overlaps the selected period. The period runs
+# from 00:00 of the first day to the END of the last day in time zone tz (tn_period_window()), the same
+# window the export cuts and tn_series_with_rows() probes; comparing against 00:00 of the last day would
+# drop series whose data starts later on that day.
+overlaps_period <- function(db_start, db_stop, daterange, tz) {
+  win <- tn_period_window(daterange[1], daterange[2], tz)
+  db_start < win$hi & db_stop >= win$lo
+}
+
+# (series_id, table_name) pairs that really have rows in the selected period. Depends only
+# on data quality and date range, so it runs once per period and changing the species /
+# site / variable selection stays instant. NULL = not checked (level skipped or check failed).
+window_rows <- reactive({
+  req(daterange_debounce(), dataqual.tbl())
+  if (!dataqual_debounce() %in% exact_check_levels) return(NULL)
+
+  tz <- selected_tz()
+  cand <- dataqual.tbl() %>%
+    dplyr::filter(overlaps_period(db_start, db_stop, daterange_debounce(), tz)) %>%
+    dplyr::distinct(series_id, table_name)
+
+  ok <- tryCatch(
+    tn_series_with_rows(db_conn, cand, daterange_debounce()[1], daterange_debounce()[2], tz),
+    error = function(e) {
+      message(Sys.time(), " window_rows check failed: ", conditionMessage(e))
+      showNotification(
+        "Could not verify data availability for this period. Some listed series may have no data.",
+        type = "warning"
+      )
+      NULL
+    }
+  )
+  if (is.null(ok)) return(NULL)
+  cand[ok, , drop = FALSE]
+})
+
+filtered.tbl <- reactive({
+  req(daterange_debounce())
+  out <- available.tbl() %>%
+    dplyr::filter(overlaps_period(db_start, db_stop, daterange_debounce(), selected_tz()))
+
+  rows <- window_rows()
+  if (!is.null(rows)) {
+    out <- dplyr::semi_join(out, rows, by = c("series_id", "table_name"))
+  }
+
+  dplyr::arrange(out, measure_point)
+})
+
+# 7. Data table output -----------------------------------------------------
+displayed.tbl <- eventReactive(list(filtered.tbl(), selected_tz()), {
+  tz <- selected_tz()
   filtered.tbl() %>%
-    dplyr::select(series_id, measure_point, sensor_class, series_start, series_stop, site_xcor, site_ycor, site_altitude) %>% 
+    dplyr::transmute(
+      series_id,
+      # measure_point,
+      variable_name,
+      tree_genus_species,
+      site_name,
+      # first and last row of this series in the selected data quality level (db_start / db_stop, from
+      # import_log), i.e. what can be downloaded; not the sensor's installation period from view_metadata.
+      # Shown in the selected time zone.
+      first_date = format(db_start, "%Y-%m-%d %H:%M", tz = tz),
+      last_date  = format(db_stop,  "%Y-%m-%d %H:%M", tz = tz)
+    ) %>%
     dplyr::distinct()
 })
 
 output$table_out <- DT::renderDataTable({
-  # req(input$tree_genus_species, input$site_name, input$daterange_id)
-  toDT(displayed.tbl()) 
-})  
+  tryCatch(
+    toDT(displayed.tbl()),
+    error = function(e){
+      msg <- paste(Sys.time(), "renderDataTable error:", conditionMessage(e), sep = " ")
+      writeLines(msg, con = "shiny-error.log", sep = "\n", useBytes = TRUE)
+      stop(e)  # preserves original behavior so client still sees error response
+    }
+  )
+})
 
-# 4. Get the data ---------------------------------------------------------
+# 8. Export handler --------------------------------------------------------
 observeEvent(input$send, {
-  
-  info.sel <- filtered.tbl()[input$table_out_rows_selected, ] %>% 
-    # dplyr::select(series_id, measure_point, sensor_name, site_name, sensor_class) %>% 
+    waiter::waiter_show(
+      html = tagList(
+        spin_fading_circles(),
+        "Submitting export request..."
+      )
+    )
+  info.sel <- filtered.tbl()[input$table_out_rows_selected, , drop = FALSE] %>%
     as.data.frame()
-  
 
-  job.id <- uuid::UUIDgenerate()
-  params_file <- paste0("/tmp/params_", job.id, ".rds")
-  # log_out     <- paste0("exports/out_", job.id, ".log")
-  # log_err     <- paste0("exports/err_", job.id, ".log")
-  
+  job_id(uuid::UUIDgenerate())
+  params_file <- file.path("exports", paste0("params_", job_id(), ".rds"))
+
   params <- list(
     recipient = input$recipient,
-    dataqual  = input$dataqual_id,
-    daterange = input$daterange_id,
-    metadata  = info.sel,
-    jobid     = job.id
+    dataqual = input$dataqual,
+    daterange = input$daterange,
+    timezone = selected_tz(),
+    metadata = info.sel,
+    jobid = job_id()
   )
-  message(job.id)
+
   saveRDS(params, params_file)
-  message("params_file saved")
 
-  
-  # system2(
-  #   command = "nohup",
-  #   args   = c("Rscript", "scripts/filesender.R", params_file),
-  #   stdout = T,
-  #   stderr = T,
-  #   wait   = F
-  # )
-  # message("files saved")
-
-    system2("Rscript", c("scripts/filesender.R", params_file), wait = F)
-  
+  system2(
+    command = "nohup",
+    args = c("Rscript", "scripts/filesender.R", params_file),
+    stdout = TRUE,
+    stderr = TRUE,
+    wait = FALSE
+  )
 })
+
+observeEvent(input$send, {
+  req(input$recipient)
+  waiter::waiter_hide()
+  removeModal()
+
+  # Path to the logfile (must match filesender.R logic)
+  # retrieve the job.id used for this export
+  logfile <- file.path("exports", paste0(job_id(), ".log"))
+  error_msg <- NULL
+
+  if (file.exists(logfile) && file.info(logfile)$size > 0) {
+    error_msg <- paste(readLines(logfile), collapse = "<br>")
+  }
+
+  showModal(modalDialog(
+    title = "Export Request Received",
+    if (!is.null(error_msg)) {
+      HTML(paste0("<b>Error:</b><br>", error_msg))
+    } else {
+      tagList(
+        p("Your export request has been received and is being processed."),
+        br(),
+        HTML(paste0(
+          "Once the export completes, an email will be sent to ",
+          input$recipient,
+          " from <b>filesender@switch.ch</b> containing a download link for the timeseries data and its metadata. Links expire after 20 days."
+        ))
+      )
+    },
+    easyClose = FALSE,
+    footer = modalButton("Close")
+  ))
+})
+
+
 
 # 5. View the data ---------------------------------------------------
 # observe({
@@ -269,7 +508,7 @@ observeEvent(input$send, {
 #       data.df <- data.tbl() %>%
 #         dplyr::select(ts, series, value) %>%
 #         tidyr::pivot_wider(names_from = series, values_from = value)  %>%
-#         dplyr::bind_rows(dplyr::tibble(ts = as.POSIXct(isolate(input$daterange_id))))
+#         dplyr::bind_rows(dplyr::tibble(ts = as.POSIXct(isolate(input$daterange))))
 #       
 #       data.df <- xts::xts(x = dplyr::select(data.df, -ts),
 #                           order.by = dplyr::select(data.df, ts) %>% dplyr::pull(ts))
@@ -306,10 +545,8 @@ observeEvent(input$send, {
 # 6. Export selected data ---------------------------------------------------
 observe({
   shinyjs::disable("export")
-  # updateActionButton("export", session=session, "6. Select available data", icon = icon("download"))
   req(displayed.tbl(), input$table_out_rows_selected)
   shinyjs::enable("export")
-  # updateActionButton("export", session=session, "6. Export selected data", icon = icon("download"))
 })
 
 iv <- InputValidator$new()
@@ -324,67 +561,89 @@ observe({
     shinyjs::disable("send")
   }
 })
-  
+
 observeEvent(input$export, {
-  showModal(
-    modalDialog(
-      title = "Export Selected Data",
-      "Please enter an email address to receive the data download link.",
-      textInput( inputId = "recipient", label = "Recipient:", width = "100%", value = user_con$username, placeholder = "Your email address"),
-      easyClose = F,
-      footer = tagList(
-        modalButton("Cancel"),
-        actionButton("send", "Send")
-      )
-    ))
-})
-observeEvent(input$send, {
-  req(input$recipient)
-  # req(data.tbl(),input$recipient)
-  # filesender(data.tbl() %>% dplyr::select(series_id=series, measure_point, ts, value),
-  #            input$recipient)
-    removeModal()
-    showModal(
-      modalDialog(
-      title = "Export Request Received",
-      paste0("Please check the inbox of ",input$recipient,"."),
-      br(),
-      "Once the export is complete, you will receive an email from filesender@switch.ch with a download link for the timeseries data and the corresponding request metadata.",
-      br(),
-      "You may now close this message and logout of the data portal.",
-      easyClose = F,
-      footer = modalButton("Close"),
-    ))
+  showModal(modalDialog(
+    title = "Export Selected Data",
+    textInput(
+      inputId = "recipient",
+      label = "Recipient:",
+      width = "100%",
+      value = user_con$username,
+      placeholder = "Your email address"
+    ),
+    easyClose = FALSE,
+    footer = tagList(modalButton("Cancel"), actionButton("send", "Send"))
+  ))
 })
 
-# observe({
-#   shinyjs::disable("export_out")
-#   req(data.tbl(), table_out_rows_debounce())
-#   shinyjs::enable("export_out")
-# })
-# 
-# output$export_out <- downloadHandler(
-#   filename = function() {paste0("tn_", lubridate::now(), ".csv")},
-#   content = function(file) {
-#     withProgress(message = 'Exporting the data', value = 0.5, {
-#       
-#       # if (!is.null(input$plot_out_date_window)) {
-#       #   export.tbl <- export.tbl %>%
-#       #     filter(ts <= lubridate::ymd_hm(input$plot_out_date_window[[2]], truncated = 2),
-#       #            ts >= lubridate::ymd_hm(input$plot_out_date_window[[1]], truncated = 2)) %>%
-#       #     dplyr::select(-site_name, -sensor_class)
-#       # } else {
-#       # }
-#       
-#       write.csv(data.tbl() %>% dplyr::select(series_id=series, measure_point, ts, value), file, row.names = FALSE)
-#     })
-#   })
 
-# 7. Keep connection open ---------------------------------------------------
+# 10. Keep connection alive (heartbeat) -----------------------------------
 output$keepAlive <- renderText({
   req(input$count)
   paste("keep alive ", input$count)
 })
+
+# 11. import_log driven updates (idempotent; duplicate-safe) ----------------
+observeEvent(dataqual.tbl(), {
+  # ensure import_log-driven updates also respect L0/L1 meteorological inclusion
+  req(dataqual.tbl())
+  df <- dataqual.tbl()
+
+  new_species <- setdiff(sort(unique(df$tree_genus_species)), "-999 -999")
+  new_sites <- sort(unique(df$site_name))
+
+  if (!identical(new_species, prev_species())) {
+    prev_species(new_species)
+    freezeReactiveValue(input, "tree_genus_species")
+    shinyWidgets::updateVirtualSelect(
+      session = session,
+      inputId = "tree_genus_species",
+      choices = new_species,
+      selected = intersect(isolate(input$tree_genus_species), new_species)
+    )
+  }
+
+  if (!identical(new_sites, prev_sites())) {
+    prev_sites(new_sites)
+    freezeReactiveValue(input, "site_name")
+    shinyWidgets::updateVirtualSelect(
+      session = session,
+      inputId = "site_name",
+      choices = new_sites,
+      selected = intersect(isolate(input$site_name), new_sites)
+    )
+  }
+})
+
+# Ensure choices + selections refresh when dataqual changes
+observeEvent(dataqual_debounce(), {
+  req(dataqual.tbl())
+  df <- dataqual.tbl()
+
+  new_species <- setdiff(sort(unique(df$tree_genus_species)), "-999 -999")
+  new_sites <- sort(unique(df$site_name))
+
+  # update stored choices and UI (clear selection so filtering uses available choices)
+  prev_species(new_species)
+  prev_sites(new_sites)
+
+  freezeReactiveValue(input, "tree_genus_species")
+  shinyWidgets::updateVirtualSelect(
+    session = session,
+    inputId = "tree_genus_species",
+    choices = new_species,
+    selected = character(0)
+  )
+
+  freezeReactiveValue(input, "site_name")
+  shinyWidgets::updateVirtualSelect(
+    session = session,
+    inputId = "site_name",
+    choices = new_sites,
+    selected = character(0)
+  )
+}, ignoreInit = TRUE)
 
 
 
