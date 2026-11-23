@@ -19,10 +19,8 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
-          submodules: 'recursive'
-          token: ${{ secrets.GHCR_PAT }}
           fetch-depth: 0
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
