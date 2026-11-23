@@ -1,4 +1,7 @@
-FROM rocker/shiny:4
+# Pin the base image: the floating "4" tag moved to a newer R/Ubuntu where
+# older packages in renv.lock (e.g. showtext) no longer compile.
+# 4.5.1 is what "4" resolved to when this image last built successfully.
+FROM rocker/shiny:4.5.1
 
 # set permissions of the R library directory to be editable by shiny (997:997)
 # see https://github.com/SwissDataScienceCenter/renkulab-docker/blob/main/docker/r/Dockerfile
