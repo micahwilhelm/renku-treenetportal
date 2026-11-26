@@ -6,7 +6,7 @@
 m_ui_login <- function( id ) {
   
   ns <- shiny::NS(id)
-version <- "2026-11-19 17:50"
+version <- "2026-11-26 13:10"
 
 fluidRow(
   id = ns("panel_login"),

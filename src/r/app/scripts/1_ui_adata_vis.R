@@ -229,17 +229,24 @@ output$ui_adata_vis <- renderUI({
 		# Main panel ----
 		mainPanel(
 			width = 9,
-			shinytip::tip(
-				strong("Available data", icon("question-circle")),
-				"The time series available in the table below are the ones that match your selection criteria.",
-				position = getOption("shinytip.position", "right"),
-				length = getOption("shinytip.length", "l"),
-				bg = getOption("shinytip.bg", "black"),
-				fg = getOption("shinytip.fg", "white"),
-				size = getOption("shinytip.size", "12px"),
-				click = getOption("shinytip.click", FALSE),
-				animate = getOption("shinytip.animate", TRUE),
-				pointer = getOption("shinytip.pointer", TRUE)
+			div(
+				style = "display: flex; align-items: center; gap: 10px; margin-bottom: 6px;",
+				shinytip::tip(
+					strong("Available data", icon("question-circle")),
+					"The time series available in the table below are the ones that match your selection criteria.",
+					position = getOption("shinytip.position", "right"),
+					length = getOption("shinytip.length", "l"),
+					bg = getOption("shinytip.bg", "black"),
+					fg = getOption("shinytip.fg", "white"),
+					size = getOption("shinytip.size", "12px"),
+					click = getOption("shinytip.click", FALSE),
+					animate = getOption("shinytip.animate", TRUE),
+					pointer = getOption("shinytip.pointer", TRUE)
+				),
+				# Toggles between "Select all" and "Deselect all"; shown only when the table has rows
+				shinyjs::hidden(
+					actionButton("select_all_rows", "Select all", icon = icon("check-double"), class = "btn-sm")
+				)
 			),
 			DT::dataTableOutput("table_out"),
 			# actionButton("view", "6. Select data in table", icon = icon("chart-line")),

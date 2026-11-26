@@ -334,9 +334,8 @@ observe({
 # import_log only stores one [min, max] range per series (and view_coverage is derived
 # from it), so it can list series whose table holds no rows in the selected period; a
 # download of those fails with "no data available". For the levels below the listing is
-# therefore confirmed against the data tables themselves (tn_series_with_rows()).
-# L0/L1 are skipped: their tables are large (probing takes ~20-30 s) and no stale
-# import_log entries were found there.
+# therefore confirmed against the data tables themselves (tn_series_with_rows(); it first
+# probes only the edges of each series' range, so long periods stay fast).
 exact_check_levels <- c("L0", "L1", "L2", "L3", "LM")
 
 # The time zone selected in the dropdown (falls back to the default before the UI exists).
@@ -354,6 +353,7 @@ overlaps_period <- function(db_start, db_stop, daterange, tz) {
 # (series_id, table_name) pairs that really have rows in the selected period. Depends only
 # on data quality and date range, so it runs once per period and changing the species /
 # site / variable selection stays instant. NULL = not checked (level skipped or check failed).
+# Series the check could not finish in time are kept (they may have data).
 window_rows <- reactive({
   req(daterange_debounce(), dataqual.tbl())
   if (!dataqual_debounce() %in% exact_check_levels) return(NULL)
@@ -361,7 +361,8 @@ window_rows <- reactive({
   tz <- selected_tz()
   cand <- dataqual.tbl() %>%
     dplyr::filter(overlaps_period(db_start, db_stop, daterange_debounce(), tz)) %>%
-    dplyr::distinct(series_id, table_name)
+    dplyr::group_by(series_id, table_name) %>%
+    dplyr::summarise(db_start = min(db_start), db_stop = max(db_stop), .groups = "drop")
 
   ok <- tryCatch(
     tn_series_with_rows(db_conn, cand, daterange_debounce()[1], daterange_debounce()[2], tz),
@@ -375,7 +376,13 @@ window_rows <- reactive({
     }
   )
   if (is.null(ok)) return(NULL)
-  cand[ok, , drop = FALSE]
+  if (anyNA(ok)) {
+    showNotification(
+      "Data availability could not be fully verified for this period. Some listed series may have no data.",
+      type = "warning"
+    )
+  }
+  cand[is.na(ok) | ok, c("series_id", "table_name"), drop = FALSE]
 })
 
 filtered.tbl <- reactive({
@@ -419,6 +426,33 @@ output$table_out <- DT::renderDataTable({
       stop(e)  # preserves original behavior so client still sees error response
     }
   )
+})
+
+# Select / deselect all toggle -------------------------------------------
+# Acts on the rows currently shown in the table (respects the table's search filter).
+table_has_rows <- reactive({
+  n <- tryCatch(nrow(displayed.tbl()), error = function(e) 0L)
+  isTRUE(n > 0) && length(input$table_out_rows_all) > 0
+})
+
+all_rows_selected <- reactive({
+  table_has_rows() && all(input$table_out_rows_all %in% input$table_out_rows_selected)
+})
+
+observe({
+  shinyjs::toggle("select_all_rows", condition = table_has_rows())
+  if (all_rows_selected()) {
+    updateActionButton(session, "select_all_rows", label = "Deselect all", icon = icon("square"))
+  } else {
+    updateActionButton(session, "select_all_rows", label = "Select all", icon = icon("check-double"))
+  }
+})
+
+observeEvent(input$select_all_rows, {
+  shown    <- input$table_out_rows_all
+  selected <- input$table_out_rows_selected
+  rows <- if (all_rows_selected()) setdiff(selected, shown) else union(selected, shown)
+  DT::selectRows(DT::dataTableProxy("table_out"), if (length(rows)) rows else NULL)
 })
 
 # 8. Export handler --------------------------------------------------------

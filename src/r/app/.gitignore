@@ -2,3 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
+
+# credentials (kept on the server only)
+scripts/login_creds.csv
+scripts/config.yml

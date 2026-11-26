@@ -314,7 +314,7 @@ tbl_tn <- function(
 	tbl_out
 }
 
-tn_series_with_rows <- function(conn, df, from, to, tz = tn_default_tz, timeout_s = 60){
+tn_series_with_rows <- function(conn, df, from, to, tz = tn_default_tz, ...){
 	#' @description Renku: no exact check. On PostgreSQL this probes the data tables for at least one row per series
 	#' in the period; on the Parquet export that means opening every chunk of the table in the bucket (thousands of
 	#' files), far too slow for an interactive filter. The table therefore relies on import_log and view_coverage,
